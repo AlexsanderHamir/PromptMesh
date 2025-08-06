@@ -17,6 +17,20 @@ func NewServer() *Server {
 	}
 }
 
+func InitServer() *http.ServeMux {
+	s := NewServer()
+	mux := http.NewServeMux()
+	s.RegisterRoutes(mux)
+
+	return mux
+}
+
+// RegisterRoutes sets up the server's HTTP routes
+func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/pipelines/create", s.CreatePipeline)
+	mux.HandleFunc("/pipelines/add-agent", s.AddAgentToPipeline)
+}
+
 // Create an empty pipeline
 func (s *Server) CreatePipeline(w http.ResponseWriter, r *http.Request) {
 	var req CreatePipelineRequest
