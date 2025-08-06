@@ -1,4 +1,6 @@
 package server
 
-const AGENT_PRFIX = "agent"
-const PIPELINE_PREFIX = "pipeline"
+const (
+	AGENT_PRFIX     = "agent"
+	PIPELINE_PREFIX = "pipeline"
+)

@@ -37,9 +37,7 @@ func TestCreatePipeline_Success(t *testing.T) {
 }
 
 func TestCreatePipeline_MissingFields(t *testing.T) {
-	s := server.NewServer()
-	mux := http.NewServeMux()
-	s.RegisterRoutes(mux)
+	mux := server.InitServer()
 
 	body := `{"name":"", "first_prompt":""}`
 	req := httptest.NewRequest(http.MethodPost, "/pipelines/create", strings.NewReader(body))
@@ -197,7 +195,7 @@ func TestStartPipeline_Success(t *testing.T) {
 		Provider:   shared.PROVIDER_OPENAI,
 		Model:      shared.DEFAULT_MODEL_OPENAI,
 	}
-	
+
 	agentBuf := new(bytes.Buffer)
 	if err := json.NewEncoder(agentBuf).Encode(addAgent); err != nil {
 		t.Fatalf("failed to encode add agent request: %v", err)

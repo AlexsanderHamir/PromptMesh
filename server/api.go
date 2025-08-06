@@ -20,13 +20,13 @@ func NewServer() *Server {
 func InitServer() *http.ServeMux {
 	s := NewServer()
 	mux := http.NewServeMux()
-	s.RegisterRoutes(mux)
+	s.registerRoutes(mux)
 
 	return mux
 }
 
 // RegisterRoutes sets up the server's HTTP routes
-func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/pipelines/create", s.CreatePipeline)
 	mux.HandleFunc("/pipelines/add-agent", s.AddAgentToPipeline)
 	mux.HandleFunc("/pipelines/start", s.StartPipeline)

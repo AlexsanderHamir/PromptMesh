@@ -13,9 +13,8 @@ type AgentManager struct {
 	// but the first agent will receive the intput from the user.
 	FirstPrompt string
 
+	// Pipeline holds all the agents.
 	pipeline []*agents.Agent
-
-	AreAgentsConnected bool
 }
 
 func (ag *AgentManager) AddToPipeline(agent *agents.Agent) {
@@ -38,10 +37,7 @@ func (ag *AgentManager) connectAgents() {
 }
 
 func (ag *AgentManager) StartPipeline() (string, error) {
-	if !ag.AreAgentsConnected {
-		ag.connectAgents()
-		ag.AreAgentsConnected = true
-	}
+	ag.connectAgents()
 
 	triggerAgent := ag.pipeline[0]
 	finalRes, err := triggerAgent.Handle(ag.FirstPrompt)
