@@ -160,3 +160,81 @@ func TestAddAgentToPipeline_UnknownProvider(t *testing.T) {
 		t.Fatalf("expected 400 Bad Request, got %d\nResponse body: %s", rr.Code, body)
 	}
 }
+
+func TestStartPipeline_Success(t *testing.T) {
+	mux := server.InitServer()
+
+	// Step 1: Create pipeline
+	createPipeline := server.CreatePipelineRequest{
+		Name:        "test-pipeline",
+		FirstPrompt: "Hello",
+	}
+
+	buf := new(bytes.Buffer)
+	if err := json.NewEncoder(buf).Encode(createPipeline); err != nil {
+		t.Fatalf("failed to encode create pipeline request: %v", err)
+	}
+	createReq := httptest.NewRequest(http.MethodPost, "/pipelines/create", buf)
+	createReq.Header.Set("Content-Type", "application/json")
+	createRes := httptest.NewRecorder()
+	mux.ServeHTTP(createRes, createReq)
+
+	if createRes.Code != http.StatusCreated {
+		t.Fatalf("pipeline creation failed: %s", createRes.Body.String())
+	}
+
+	var pipelineResp server.CreatePipelineResponse
+	if err := json.NewDecoder(createRes.Body).Decode(&pipelineResp); err != nil {
+		t.Fatalf("failed to decode create pipeline response: %v", err)
+	}
+
+	// Step 2: Add an agent to the pipeline
+	addAgent := server.AddAgentToPipelineRequest{
+		PipelineID: pipelineResp.PipelineID,
+		Name:       "TestAgent",
+		Role:       "assistant",
+		SystemMsg:  "You are a helpful AI.",
+		Provider:   shared.PROVIDER_OPENAI,
+		Model:      shared.DEFAULT_MODEL_OPENAI,
+	}
+	
+	agentBuf := new(bytes.Buffer)
+	if err := json.NewEncoder(agentBuf).Encode(addAgent); err != nil {
+		t.Fatalf("failed to encode add agent request: %v", err)
+	}
+	addReq := httptest.NewRequest(http.MethodPost, "/pipelines/add-agent", agentBuf)
+	addReq.Header.Set("Content-Type", "application/json")
+	addRes := httptest.NewRecorder()
+	mux.ServeHTTP(addRes, addReq)
+
+	if addRes.Code != http.StatusCreated {
+		t.Fatalf("add agent failed: %s", addRes.Body.String())
+	}
+
+	// Step 3: Start the pipeline
+	startReqBody := server.StartPipelineRequest{
+		PipelineID: pipelineResp.PipelineID,
+	}
+
+	startBuf := new(bytes.Buffer)
+	if err := json.NewEncoder(startBuf).Encode(startReqBody); err != nil {
+		t.Fatalf("failed to encode start pipeline request: %v", err)
+	}
+
+	startReq := httptest.NewRequest(http.MethodPost, "/pipelines/start", startBuf)
+	startReq.Header.Set("Content-Type", "application/json")
+	startRes := httptest.NewRecorder()
+	mux.ServeHTTP(startRes, startReq)
+
+	if startRes.Code != http.StatusOK {
+		t.Fatalf("start pipeline failed: %s", startRes.Body.String())
+	}
+
+	var startResp server.StartPipelineResponse
+	if err := json.NewDecoder(startRes.Body).Decode(&startResp); err != nil {
+		t.Fatalf("failed to decode start pipeline response: %v", err)
+	}
+	if startResp.Result == "" {
+		t.Fatal("expected non-empty result from pipeline")
+	}
+}

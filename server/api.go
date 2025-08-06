@@ -29,6 +29,7 @@ func InitServer() *http.ServeMux {
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/pipelines/create", s.CreatePipeline)
 	mux.HandleFunc("/pipelines/add-agent", s.AddAgentToPipeline)
+	mux.HandleFunc("/pipelines/start", s.StartPipeline)
 }
 
 // Create an empty pipeline
@@ -113,5 +114,43 @@ func (s *Server) AddAgentToPipeline(w http.ResponseWriter, r *http.Request) {
 		Message:    fmt.Sprintf("Agent '%s' created and added to pipeline '%s' at position %d", agent.Name, pipeline.Name, agentOrder),
 		AgentCount: len(pipeline.AgentIDs),
 		AgentOrder: agentOrder,
+	})
+}
+
+func (s *Server) StartPipeline(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req StartPipelineRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.sendError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.PipelineID == "" {
+		s.sendError(w, http.StatusBadRequest, "Missing required field: pipeline_id")
+		return
+	}
+
+	s.mutex.RLock()
+	pipeline, ok := s.pipelines[req.PipelineID]
+	s.mutex.RUnlock()
+
+	if !ok {
+		s.sendError(w, http.StatusNotFound, fmt.Sprintf("Pipeline with ID '%s' not found", req.PipelineID))
+		return
+	}
+
+	result, err := pipeline.Manager.StartPipeline()
+	if err != nil {
+		s.sendError(w, http.StatusInternalServerError, fmt.Sprintf("Pipeline execution failed: %v", err))
+		return
+	}
+
+	s.sendJSON(w, http.StatusOK, StartPipelineResponse{
+		Result:  result,
+		Message: fmt.Sprintf("Pipeline '%s' executed successfully", pipeline.Name),
 	})
 }

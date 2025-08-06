@@ -47,6 +47,15 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+type StartPipelineRequest struct {
+	PipelineID string `json:"pipeline_id"`
+}
+
+type StartPipelineResponse struct {
+	Result  string `json:"result"`
+	Message string `json:"message"`
+}
+
 // Server holds our in-memory storage
 type Server struct {
 	agents    map[string]*agents.Agent
