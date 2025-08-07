@@ -110,7 +110,7 @@ export default function Dashboard() {
     setShowModal(true);
   }, []);
 
-  // NEW: Add handler for editing an agent
+  // Add handler for editing an agent
   const handleEditAgent = useCallback((agent) => {
     setAgentForm({
       name: agent.name,
@@ -132,7 +132,7 @@ export default function Dashboard() {
     setIsEditingAgent(false);
   }, []);
 
-  // UPDATED: Handle both adding and editing agents
+  // Handle both adding and editing agents
   const handleAddAgent = useCallback(
     (e) => {
       e.preventDefault();
@@ -209,7 +209,6 @@ export default function Dashboard() {
     setErrors({});
     setIsSaved(true);
 
-    // Show success message (you could add a toast notification here)
     console.log("Pipeline saved successfully!");
   }, [pipelineForm, agents, currentPipeline, setPipelines]);
 
@@ -292,16 +291,14 @@ export default function Dashboard() {
         name: pipeline.name,
         firstPrompt: pipeline.firstPrompt,
       });
-      setAgents(pipeline.agents || []); // Ensure agents is always an array
+      setAgents(pipeline.agents || []);
       setCurrentView(DASH_VIEWS.BUILDER.id);
       setErrors({});
-      setIsSaved(true); // Pipeline is saved when selected from list
+      setIsSaved(true);
 
       // If pipeline has execution results, restore them
       if (pipeline.lastExecutionResult) {
-        // Set the execution results without running the pipeline
-        resetExecution(); // Clear any existing execution state
-        // You might want to show a different view or indicate that results are from a previous run
+        resetExecution();
       }
     },
     [resetExecution]
@@ -316,6 +313,47 @@ export default function Dashboard() {
       }
     },
     [pipelines]
+  );
+
+  // NEW: Handler for resetting pipeline status
+  const handleResetPipelineStatus = useCallback(
+    (pipelineId) => {
+      setPipelines((prev) =>
+        prev.map((pipeline) =>
+          pipeline.id === pipelineId
+            ? {
+                ...pipeline,
+                status: PIPELINE_STATUS.IDLE,
+                lastExecutionResult: undefined,
+                lastExecutionError: undefined,
+                lastExecutionDate: undefined,
+                updatedAt: new Date().toISOString(),
+              }
+            : pipeline
+        )
+      );
+
+      // If the reset pipeline is currently selected, update it
+      if (currentPipeline?.id === pipelineId) {
+        setCurrentPipeline((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: PIPELINE_STATUS.IDLE,
+                lastExecutionResult: undefined,
+                lastExecutionError: undefined,
+                lastExecutionDate: undefined,
+                updatedAt: new Date().toISOString(),
+              }
+            : prev
+        );
+        // Clear any execution state
+        resetExecution();
+      }
+
+      console.log("Pipeline status reset to idle successfully!");
+    },
+    [setPipelines, currentPipeline, resetExecution]
   );
 
   const confirmDeletePipeline = useCallback(() => {
@@ -386,7 +424,7 @@ export default function Dashboard() {
               agents={agents}
               errors={errors}
               onShowAddAgent={handleShowAddAgent}
-              onEditAgent={handleEditAgent} // Pass the edit handler
+              onEditAgent={handleEditAgent}
               onRemoveAgent={handleRemoveAgent}
               onClosePipeline={handleClosePipeline}
             />
@@ -463,6 +501,7 @@ export default function Dashboard() {
           currentPipeline={currentPipeline}
           onSelectPipeline={handleSelectPipeline}
           onDeletePipeline={handleDeletePipeline}
+          onResetPipelineStatus={handleResetPipelineStatus}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -485,7 +524,7 @@ export default function Dashboard() {
         showModal={showModal}
         agentForm={agentForm}
         errors={errors}
-        isEditing={isEditingAgent} // Pass the editing state
+        isEditing={isEditingAgent}
         onFormChange={handleAgentFormChange}
         onSubmit={handleAddAgent}
         onClose={handleHideAddAgent}
