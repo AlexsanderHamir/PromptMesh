@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -10,9 +11,9 @@ import (
 func main() {
 	mux := server.InitServer()
 
-	addr := ":8080"
-	log.Printf("Server listening on %s...", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("Server failed: %v", err)
-	}
+	port := ":8080"
+	fmt.Printf("🚀 PromptMesh API server starting on port %s\n", port)
+	fmt.Printf("📡 API endpoints available at http://localhost%s\n", port)
+
+	log.Fatal(http.ListenAndServe(port, mux))
 }

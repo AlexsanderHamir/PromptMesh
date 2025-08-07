@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { LOG_TYPES } from "../constants";
+import { apiClient } from "../api/client";
 
 export const usePipelineExecution = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -25,38 +26,48 @@ export const usePipelineExecution = () => {
       setProgress(0);
 
       try {
-        addLog(LOG_TYPES.INFO, "🚀 Initializing pipeline execution...");
+        addLog(LOG_TYPES.INFO, "🚀 Creating pipeline...");
         setProgress(5);
 
-        // Simulate pipeline execution
+        // Step 1: Create pipeline
+        const createResult = await apiClient.createPipeline(
+          pipelineForm.name,
+          pipelineForm.firstPrompt
+        );
+
+        addLog(
+          LOG_TYPES.SUCCESS,
+          `✅ Pipeline created with ID: ${createResult.pipeline_id}`
+        );
+        setProgress(20);
+
+        // Step 2: Add agents to pipeline
         for (let i = 0; i < agents.length; i++) {
           const agent = agents[i];
           addLog(
             LOG_TYPES.INFO,
-            `🤖 Processing with ${agent.name} (${agent.provider}/${
-              agent.model || "default"
-            })...`
+            `🤖 Adding agent ${i + 1}/${agents.length}: ${agent.name}...`
           );
 
-          const delay = Math.random() * 2000 + 1000;
-          await new Promise((resolve) => setTimeout(resolve, delay));
-
-          if (Math.random() < 0.1) {
-            addLog(
-              LOG_TYPES.WARNING,
-              `⚠️ ${agent.name} encountered a minor issue but recovered`
-            );
-          }
+          const agentResult = await apiClient.addAgentToPipeline(
+            createResult.pipeline_id,
+            agent
+          );
 
           addLog(
             LOG_TYPES.SUCCESS,
-            `✅ ${agent.name} completed processing successfully`
+            `✅ Agent "${agent.name}" added at position ${agentResult.agent_order}`
           );
-          setProgress(10 + ((i + 1) / agents.length) * 75);
+          setProgress(20 + ((i + 1) / agents.length) * 60);
         }
 
-        addLog(LOG_TYPES.INFO, "🔄 Consolidating results...");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        addLog(LOG_TYPES.INFO, "🔄 Starting pipeline execution...");
+        setProgress(85);
+
+        // Step 3: Start pipeline execution
+        const executionResult = await apiClient.startPipeline(
+          createResult.pipeline_id
+        );
 
         addLog(
           LOG_TYPES.SUCCESS,
@@ -64,44 +75,14 @@ export const usePipelineExecution = () => {
         );
         setProgress(100);
 
-        setResult(`# Pipeline Execution Results
-
-## Summary
-Pipeline "${pipelineForm.name}" executed successfully with ${
-          agents.length
-        } agent(s).
-
-## Initial Prompt
-${pipelineForm.firstPrompt}
-
-## Processing Chain
-${agents
-  .map(
-    (agent, i) =>
-      `${i + 1}. **${agent.name}** (${agent.provider}) - ${agent.role}`
-  )
-  .join("\n")}
-
-## Output
-This is a simulated comprehensive result from your AI agent pipeline. In a production environment, this would contain:
-
-- Processed data from each agent in the chain
-- Transformed content based on your initial prompt
-- Analytics and insights from the execution
-- Any intermediate results or decision points
-- Final synthesized output combining all agent contributions
-
-The pipeline successfully processed your prompt through ${
-          agents.length
-        } specialized agent${
-          agents.length > 1 ? "s" : ""
-        }, each contributing their unique capabilities to deliver this result.`);
+        setResult(executionResult.result);
       } catch (error) {
         addLog(
           LOG_TYPES.ERROR,
           `❌ Pipeline execution failed: ${error.message}`
         );
         setProgress(0);
+        console.error("Pipeline execution error:", error);
       } finally {
         setIsRunning(false);
       }

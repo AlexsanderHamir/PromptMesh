@@ -20,20 +20,43 @@ func NewServer() *Server {
 func InitServer() *http.ServeMux {
 	s := NewServer()
 	mux := http.NewServeMux()
-	s.registerRoutes(mux)
 
+	// Add CORS middleware wrapper
+	corsHandler := func(handler http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// Set CORS headers
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+			// Handle preflight requests
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			handler(w, r)
+		}
+	}
+
+	s.registerRoutes(mux, corsHandler)
 	return mux
 }
 
-// RegisterRoutes sets up the server's HTTP routes
-func (s *Server) registerRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/pipelines/create", s.CreatePipeline)
-	mux.HandleFunc("/pipelines/add-agent", s.AddAgentToPipeline)
-	mux.HandleFunc("/pipelines/start", s.StartPipeline)
+// RegisterRoutes sets up the server's HTTP routes with CORS middleware
+func (s *Server) registerRoutes(mux *http.ServeMux, corsHandler func(http.HandlerFunc) http.HandlerFunc) {
+	mux.HandleFunc("/pipelines/create", corsHandler(s.CreatePipeline))
+	mux.HandleFunc("/pipelines/add-agent", corsHandler(s.AddAgentToPipeline))
+	mux.HandleFunc("/pipelines/start", corsHandler(s.StartPipeline))
 }
 
 // Create an empty pipeline
 func (s *Server) CreatePipeline(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	var req CreatePipelineRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.sendError(w, http.StatusBadRequest, "Invalid JSON")
@@ -68,6 +91,11 @@ func (s *Server) CreatePipeline(w http.ResponseWriter, r *http.Request) {
 
 // Create agent and add to pipeline in one step
 func (s *Server) AddAgentToPipeline(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	var req AddAgentToPipelineRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.sendError(w, http.StatusBadRequest, "Invalid JSON")
