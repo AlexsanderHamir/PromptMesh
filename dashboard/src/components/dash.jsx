@@ -8,15 +8,20 @@ import { PipelineActions } from "./PipelineActions";
 import { ExecutionMonitor } from "./ExecutionMonitor";
 import { PipelineResults } from "./PipelineResults";
 import { AddAgentModal } from "./AddAgentModal";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { usePipelineExecution } from "../hooks/usePipelineExecution";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { generateId, validatePipelineForm, validateAgentForm } from "../utils";
 import { PIPELINE_STATUS } from "../constants";
 
 export default function Dashboard() {
-  const [pipelines, setPipelines] = useState([]);
+  // Use localStorage for pipelines persistence
+  const [pipelines, setPipelines] = useLocalStorage("promptmesh_pipelines", []);
   const [currentPipeline, setCurrentPipeline] = useState(null);
   const [currentView, setCurrentView] = useState("welcome");
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [pipelineToDelete, setPipelineToDelete] = useState(null);
   const [agents, setAgents] = useState([]);
   const [errors, setErrors] = useState({});
 
@@ -105,18 +110,31 @@ export default function Dashboard() {
     }
 
     const pipeline = {
-      id: generateId(),
+      id: currentPipeline?.id || generateId(),
       name: pipelineForm.name,
       firstPrompt: pipelineForm.firstPrompt,
       agents: agents,
       status: PIPELINE_STATUS.IDLE,
-      createdAt: new Date().toISOString(),
+      createdAt: currentPipeline?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    setPipelines((prev) => [...prev, pipeline]);
+    if (currentPipeline) {
+      // Update existing pipeline
+      setPipelines((prev) =>
+        prev.map((p) => (p.id === currentPipeline.id ? pipeline : p))
+      );
+    } else {
+      // Add new pipeline
+      setPipelines((prev) => [...prev, pipeline]);
+    }
+
     setCurrentPipeline(pipeline);
     setErrors({});
-  }, [pipelineForm, agents]);
+
+    // Show success message (you could add a toast notification here)
+    console.log("Pipeline saved successfully!");
+  }, [pipelineForm, agents, currentPipeline, setPipelines]);
 
   const handleRunPipeline = useCallback(async () => {
     const validationErrors = validatePipelineForm(pipelineForm, agents);
@@ -126,11 +144,21 @@ export default function Dashboard() {
       return;
     }
 
+    // Save pipeline before running if not already saved
+    if (
+      !currentPipeline ||
+      currentPipeline.name !== pipelineForm.name ||
+      currentPipeline.firstPrompt !== pipelineForm.firstPrompt ||
+      JSON.stringify(currentPipeline.agents) !== JSON.stringify(agents)
+    ) {
+      handleSavePipeline();
+    }
+
     setCurrentView("viewer");
     setErrors({});
 
     await runPipeline(pipelineForm, agents);
-  }, [pipelineForm, agents, runPipeline]);
+  }, [pipelineForm, agents, runPipeline, currentPipeline, handleSavePipeline]);
 
   const handleSelectPipeline = useCallback((pipeline) => {
     setCurrentPipeline(pipeline);
@@ -141,6 +169,41 @@ export default function Dashboard() {
     setAgents(pipeline.agents);
     setCurrentView("builder");
     setErrors({});
+  }, []);
+
+  const handleDeletePipeline = useCallback(
+    (pipelineId) => {
+      const pipelineToDelete = pipelines.find((p) => p.id === pipelineId);
+      if (pipelineToDelete) {
+        setPipelineToDelete(pipelineToDelete);
+        setShowDeleteDialog(true);
+      }
+    },
+    [pipelines]
+  );
+
+  const confirmDeletePipeline = useCallback(() => {
+    if (pipelineToDelete) {
+      setPipelines((prev) => prev.filter((p) => p.id !== pipelineToDelete.id));
+
+      // If the deleted pipeline was currently selected, reset the view
+      if (currentPipeline?.id === pipelineToDelete.id) {
+        setCurrentPipeline(null);
+        setCurrentView("welcome");
+        setPipelineForm({ name: "", firstPrompt: "" });
+        setAgents([]);
+        resetExecution();
+      }
+
+      setShowDeleteDialog(false);
+      setPipelineToDelete(null);
+      console.log("Pipeline deleted successfully!");
+    }
+  }, [pipelineToDelete, currentPipeline, setPipelines, resetExecution]);
+
+  const cancelDeletePipeline = useCallback(() => {
+    setShowDeleteDialog(false);
+    setPipelineToDelete(null);
   }, []);
 
   const handleFormChange = useCallback(
@@ -243,6 +306,7 @@ export default function Dashboard() {
           pipelines={pipelines}
           currentPipeline={currentPipeline}
           onSelectPipeline={handleSelectPipeline}
+          onDeletePipeline={handleDeletePipeline}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -268,6 +332,17 @@ export default function Dashboard() {
         onFormChange={handleAgentFormChange}
         onSubmit={handleAddAgent}
         onClose={handleHideAddAgent}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete Pipeline"
+        message={`Are you sure you want to delete "${pipelineToDelete?.name}"? This action cannot be undone and will permanently remove the pipeline and all its configurations.`}
+        confirmText="Delete Pipeline"
+        cancelText="Cancel"
+        onConfirm={confirmDeletePipeline}
+        onCancel={cancelDeletePipeline}
+        variant="danger"
       />
     </div>
   );
