@@ -4,6 +4,7 @@ import { Button } from "./ui/Button";
 export const WelcomeScreen = ({
   onCreateNewPipeline,
   hasExistingPipelines = false,
+  isLoading = false,
 }) => (
   <div className="flex-1 flex items-center justify-center p-8">
     <div className="text-center max-w-md">
@@ -18,9 +19,11 @@ export const WelcomeScreen = ({
         specialized agents to process complex workflows and deliver
         sophisticated results.
       </p>
-      <Button size="lg" onClick={onCreateNewPipeline}>
+      <Button size="lg" onClick={onCreateNewPipeline} disabled={isLoading}>
         <Plus className="w-5 h-5" />
-        {hasExistingPipelines
+        {isLoading
+          ? "Loading..."
+          : hasExistingPipelines
           ? "Create New Pipeline"
           : "Create Your First Pipeline"}
       </Button>

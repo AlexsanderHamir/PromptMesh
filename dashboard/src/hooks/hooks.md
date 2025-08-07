@@ -4,80 +4,107 @@
 
 The application uses two main custom hooks for state management and pipeline execution:
 
-1. `useLocalStorage` - Persists state to browser storage
+1. `useIndexedDB` - Persists state to IndexedDB for large data storage
 2. `usePipelineExecution` - Manages pipeline execution workflow
 
-## Hook 1: `useLocalStorage.js`
+## Hook 1: `useIndexedDB.js`
 
 ### Purpose
 
-Persists React state to localStorage and synchronizes changes.
+Persists React state to IndexedDB and synchronizes changes. Designed for storing large data like prompts that may exceed localStorage limits.
 
 ### Implementation
 
 ```javascript
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-export const useLocalStorage = (key, initialValue) => {
-  // State initialization with localStorage value
-  const [storedValue, setStoredValue] = useState(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
-      return initialValue;
-    }
-  });
+export const useIndexedDB = (key, initialValue) => {
+  const [storedValue, setStoredValue] = useState(initialValue);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Wrapped setter function
-  const setValue = (value) => {
-    try {
-      const valueToStore =
-        value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
-    }
-  };
+  // Load initial value from IndexedDB
+  useEffect(() => {
+    const loadValue = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const item = await getFromDB(key);
+        setStoredValue(item !== null ? item : initialValue);
+      } catch (err) {
+        console.error(`Error reading IndexedDB key "${key}":`, err);
+        setError(err);
+        setStoredValue(initialValue);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Removal function
-  const removeValue = () => {
+    loadValue();
+  }, [key, initialValue]);
+
+  // Update IndexedDB when state changes
+  const setValue = useCallback(
+    async (value) => {
+      try {
+        setError(null);
+        const valueToStore =
+          value instanceof Function ? value(storedValue) : value;
+        setStoredValue(valueToStore);
+
+        if (valueToStore === undefined) {
+          await removeFromDB(key);
+        } else {
+          await setInDB(key, valueToStore);
+        }
+      } catch (err) {
+        console.error(`Error setting IndexedDB key "${key}":`, err);
+        setError(err);
+      }
+    },
+    [key, storedValue]
+  );
+
+  // Remove from IndexedDB
+  const removeValue = useCallback(async () => {
     try {
-      window.localStorage.removeItem(key);
+      setError(null);
+      await removeFromDB(key);
       setStoredValue(initialValue);
-    } catch (error) {
-      console.error(`Error removing localStorage key "${key}":`, error);
+    } catch (err) {
+      console.error(`Error removing IndexedDB key "${key}":`, err);
+      setError(err);
     }
-  };
+  }, [key, initialValue]);
 
-  return [storedValue, setValue, removeValue];
+  return [storedValue, setValue, removeValue, isLoading, error];
 };
 ```
 
 ### Usage in Dashboard
 
 ```javascript
-// Storing pipelines
-const [pipelines, setPipelines, removePipelines] = useLocalStorage(
-  "promptmesh_pipelines",
-  []
-);
+// Storing pipelines with loading and error states
+const [pipelines, setPipelines, , isLoadingPipelines, pipelinesError] =
+  useIndexedDB("promptmesh_pipelines", []);
 ```
 
 ### Key Features
 
-1. **Automatic Synchronization**: Any state changes automatically update localStorage
-2. **Error Handling**: Gracefully falls back to initial value if localStorage access fails
+1. **Automatic Synchronization**: Any state changes automatically update IndexedDB
+2. **Error Handling**: Gracefully falls back to initial value if IndexedDB access fails
 3. **Full API**: Provides get, set, and remove operations
 4. **Type Preservation**: Handles both direct values and functional updates like useState
+5. **Loading States**: Provides loading and error states for better UX
+6. **Large Data Support**: Handles large data like prompts that exceed localStorage limits
 
 ### Benefits
 
 - Persists pipeline data across page refreshes
 - Maintains React's declarative programming model
-- Provides clean abstraction over localStorage operations
+- Provides clean abstraction over IndexedDB operations
+- Supports large prompt data storage
+- Includes execution logs for debugging and analysis
 
 ---
 
@@ -201,8 +228,18 @@ const handleRunPipeline = async () => {
 ### Integration Points
 
 - **ExecutionMonitor**: Consumes `logs` and `progress`
-- **PipelineResults**: Displays `result`
+- **PipelineResults**: Displays `result` and saved logs
 - **PipelineActions**: Uses `isRunning` to disable buttons
+- **Dashboard**: Saves execution logs to pipeline data for persistence
+
+### Log Persistence
+
+Execution logs are now automatically saved with each pipeline execution:
+
+- **Successful executions**: Logs are saved alongside the result
+- **Failed executions**: Logs are saved alongside the error message
+- **Historical access**: Previous execution logs can be viewed when revisiting results
+- **Reset functionality**: Logs are cleared when pipeline status is reset
 
 ---
 

@@ -10,7 +10,7 @@ import { PipelineResults } from "./PipelineResults";
 import { AddAgentModal } from "./AddAgentModal";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { usePipelineExecution } from "../hooks/usePipelineExecution";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useIndexedDB } from "../hooks/useIndexedDB";
 import { generateId, validatePipelineForm, validateAgentForm } from "../utils";
 import {
   PIPELINE_STATUS,
@@ -20,10 +20,8 @@ import {
 } from "../constants";
 
 export default function Dashboard() {
-  const [pipelines, setPipelines] = useLocalStorage(
-    STORAGE_KEYS.PIPELINES,
-    DEFAULT_VALUES.PIPELINES
-  );
+  const [pipelines, setPipelines, , isLoadingPipelines, pipelinesError] =
+    useIndexedDB(STORAGE_KEYS.PIPELINES, DEFAULT_VALUES.PIPELINES);
   const [currentPipeline, setCurrentPipeline] = useState(null);
   const [currentView, setCurrentView] = useState(DASH_VIEWS.WELCOME.id);
   const [showModal, setShowModal] = useState(false);
@@ -254,12 +252,13 @@ export default function Dashboard() {
     try {
       const result = await runPipeline(pipelineForm, agents);
 
-      // Update pipeline status to completed and save results
+      // Update pipeline status to completed and save results with logs
       if (currentPipeline) {
         const completedPipeline = {
           ...currentPipeline,
           status: PIPELINE_STATUS.COMPLETED,
           lastExecutionResult: result,
+          lastExecutionLogs: logs, // Save the execution logs
           lastExecutionDate: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -269,12 +268,13 @@ export default function Dashboard() {
         setCurrentPipeline(completedPipeline);
       }
     } catch (error) {
-      // Update pipeline status to error
+      // Update pipeline status to error and save logs
       if (currentPipeline) {
         const errorPipeline = {
           ...currentPipeline,
           status: PIPELINE_STATUS.ERROR,
           lastExecutionError: error.message,
+          lastExecutionLogs: logs, // Save the execution logs even on error
           lastExecutionDate: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -336,6 +336,7 @@ export default function Dashboard() {
                 status: PIPELINE_STATUS.IDLE,
                 lastExecutionResult: undefined,
                 lastExecutionError: undefined,
+                lastExecutionLogs: undefined, // Clear saved logs
                 lastExecutionDate: undefined,
                 updatedAt: new Date().toISOString(),
               }
@@ -352,6 +353,7 @@ export default function Dashboard() {
                 status: PIPELINE_STATUS.IDLE,
                 lastExecutionResult: undefined,
                 lastExecutionError: undefined,
+                lastExecutionLogs: undefined, // Clear saved logs
                 lastExecutionDate: undefined,
                 updatedAt: new Date().toISOString(),
               }
@@ -419,6 +421,7 @@ export default function Dashboard() {
           <WelcomeScreen
             onCreateNewPipeline={handleCreateNewPipeline}
             hasExistingPipelines={pipelines.length > 0}
+            isLoading={isLoadingPipelines}
           />
         );
 
@@ -461,6 +464,7 @@ export default function Dashboard() {
         const hasCurrentLogs = logs && logs.length > 0;
         const hasPreviousResult = currentPipeline?.lastExecutionResult;
         const hasPreviousError = currentPipeline?.lastExecutionError;
+        const hasPreviousLogs = currentPipeline?.lastExecutionLogs;
         const isCurrentError =
           currentPipeline?.status === PIPELINE_STATUS.ERROR;
 
@@ -470,7 +474,11 @@ export default function Dashboard() {
           : hasPreviousResult
           ? currentPipeline.lastExecutionResult
           : null;
-        const displayLogs = hasCurrentLogs ? logs : [];
+        const displayLogs = hasCurrentLogs
+          ? logs
+          : hasPreviousLogs
+          ? currentPipeline.lastExecutionLogs
+          : [];
         const isFromPrevious =
           !hasCurrentResult &&
           !hasCurrentLogs &&
@@ -556,7 +564,29 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto">{renderMainContent()}</div>
+          <div className="flex-1 overflow-y-auto">
+            {pipelinesError && (
+              <div className="p-4 m-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-red-300 font-medium">
+                    Storage Error
+                  </span>
+                </div>
+                <p className="text-red-400 text-sm mt-1">
+                  Failed to load pipelines from storage:{" "}
+                  {pipelinesError.message}
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-red-300 hover:text-red-200 text-sm underline mt-2"
+                >
+                  Reload page to retry
+                </button>
+              </div>
+            )}
+            {renderMainContent()}
+          </div>
         </main>
       </div>
 
