@@ -315,7 +315,7 @@ export default function Dashboard() {
     [pipelines]
   );
 
-  // NEW: Handler for resetting pipeline status
+  // Handler for resetting pipeline status
   const handleResetPipelineStatus = useCallback(
     (pipelineId) => {
       setPipelines((prev) =>
@@ -432,7 +432,10 @@ export default function Dashboard() {
               isRunning={isRunning}
               isFormValid={isFormValid}
               isSaved={isSaved}
-              hasLastExecution={currentPipeline?.lastExecutionResult}
+              hasLastExecution={
+                currentPipeline?.lastExecutionResult ||
+                currentPipeline?.lastExecutionError
+              }
               lastExecutionDate={currentPipeline?.lastExecutionDate}
               onRunPipeline={handleRunPipeline}
               onSavePipeline={handleSavePipeline}
@@ -443,15 +446,38 @@ export default function Dashboard() {
         );
 
       case DASH_VIEWS.VIEWER.id:
+        // Determine what data we have to show
+        const hasCurrentResult = result && result.trim();
+        const hasCurrentLogs = logs && logs.length > 0;
+        const hasPreviousResult = currentPipeline?.lastExecutionResult;
+        const hasPreviousError = currentPipeline?.lastExecutionError;
+        const isCurrentError =
+          currentPipeline?.status === PIPELINE_STATUS.ERROR;
+
+        // Show current execution data if available, otherwise show previous data
+        const displayResult = hasCurrentResult
+          ? result
+          : hasPreviousResult
+          ? currentPipeline.lastExecutionResult
+          : null;
+        const displayLogs = hasCurrentLogs ? logs : [];
+        const isFromPrevious =
+          !hasCurrentResult &&
+          !hasCurrentLogs &&
+          (hasPreviousResult || hasPreviousError);
+        const hasError =
+          isCurrentError ||
+          (isFromPrevious && hasPreviousError && !hasPreviousResult);
+
         return (
           <div className="p-8 space-y-8">
             <ExecutionMonitor progress={progress} logs={logs} />
             <PipelineResults
-              result={result || currentPipeline?.lastExecutionResult}
-              isFromPreviousExecution={
-                !result && currentPipeline?.lastExecutionResult
-              }
+              result={displayResult}
+              logs={displayLogs}
+              isFromPreviousExecution={isFromPrevious}
               lastExecutionDate={currentPipeline?.lastExecutionDate}
+              hasError={hasError}
             />
           </div>
         );
