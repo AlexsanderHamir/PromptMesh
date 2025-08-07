@@ -35,17 +35,15 @@ export const Sidebar = ({
           {pipelines.map((pipeline) => (
             <div
               key={pipeline.id}
-              className={`group bg-slate-800/30 border rounded-xl p-4 transition-all duration-200 hover:bg-slate-700/30 hover:border-blue-500/50 hover:shadow-lg hover:-translate-y-0.5 ${
+              onClick={() => onSelectPipeline(pipeline)}
+              className={`group bg-slate-800/30 border rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-slate-700/30 hover:border-blue-500/50 hover:shadow-lg hover:-translate-y-0.5 ${
                 currentPipeline?.id === pipeline.id
                   ? "border-blue-500 bg-blue-500/10 shadow-blue-500/25 shadow-lg"
                   : "border-slate-700"
               }`}
             >
               <div className="flex justify-between items-start mb-3">
-                <div
-                  className="flex-1 cursor-pointer"
-                  onClick={() => onSelectPipeline(pipeline)}
-                >
+                <div className="flex-1">
                   <h3 className="font-semibold text-slate-100 group-hover:text-white transition-colors">
                     {pipeline.name}
                   </h3>
@@ -66,10 +64,7 @@ export const Sidebar = ({
                   </Button>
                 </div>
               </div>
-              <div
-                className="flex justify-between items-center text-slate-400 text-xs cursor-pointer"
-                onClick={() => onSelectPipeline(pipeline)}
-              >
+              <div className="flex justify-between items-center text-slate-400 text-xs">
                 <div className="flex items-center gap-2">
                   <Bot className="w-3 h-3" />
                   <span>{pipeline.agents.length} agents</span>
