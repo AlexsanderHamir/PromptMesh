@@ -256,7 +256,12 @@ export default function Dashboard() {
   const renderMainContent = () => {
     switch (currentView) {
       case "welcome":
-        return <WelcomeScreen onCreateNewPipeline={handleCreateNewPipeline} />;
+        return (
+          <WelcomeScreen
+            onCreateNewPipeline={handleCreateNewPipeline}
+            hasExistingPipelines={pipelines.length > 0}
+          />
+        );
 
       case "builder":
         return (
@@ -271,6 +276,7 @@ export default function Dashboard() {
               errors={errors}
               onShowAddAgent={handleShowAddAgent}
               onRemoveAgent={handleRemoveAgent}
+              onClosePipeline={handleClosePipeline}
             />
             <PipelineActions
               isRunning={isRunning}
@@ -292,7 +298,12 @@ export default function Dashboard() {
         );
 
       default:
-        return <WelcomeScreen onCreateNewPipeline={handleCreateNewPipeline} />;
+        return (
+          <WelcomeScreen
+            onCreateNewPipeline={handleCreateNewPipeline}
+            hasExistingPipelines={pipelines.length > 0}
+          />
+        );
     }
   };
 
