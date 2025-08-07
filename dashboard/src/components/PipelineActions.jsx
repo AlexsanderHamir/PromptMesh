@@ -1,13 +1,25 @@
-import { Play, Save, AlertCircle, TrendingUp, X, Check } from "lucide-react";
+import {
+  Play,
+  Save,
+  AlertCircle,
+  TrendingUp,
+  X,
+  Check,
+  Eye,
+} from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
+import { formatDate } from "../utils";
 
 export const PipelineActions = ({
   isRunning,
   isFormValid,
   isSaved,
+  hasLastExecution,
+  lastExecutionDate,
   onRunPipeline,
   onSavePipeline,
+  onViewResults,
   onClosePipeline,
 }) => (
   <Card
@@ -34,6 +46,13 @@ export const PipelineActions = ({
         {isSaved ? "Saved" : "Save Pipeline"}
       </Button>
 
+      {hasLastExecution && (
+        <Button variant="secondary" onClick={onViewResults}>
+          <Eye className="w-4 h-4" />
+          View Results
+        </Button>
+      )}
+
       <Button variant="ghost" onClick={onClosePipeline}>
         <X className="w-4 h-4" />
         Close
@@ -52,6 +71,13 @@ export const PipelineActions = ({
         <Check className="w-4 h-4" />
         Pipeline saved successfully! You can now close this editor or continue
         making changes.
+      </p>
+    )}
+
+    {hasLastExecution && (
+      <p className="text-blue-400 text-sm mt-3 flex items-center gap-2">
+        <Eye className="w-4 h-4" />
+        Last executed: {formatDate(lastExecutionDate)}
       </p>
     )}
   </Card>

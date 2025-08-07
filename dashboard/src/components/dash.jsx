@@ -220,23 +220,86 @@ export default function Dashboard() {
       handleSavePipeline();
     }
 
+    // Update pipeline status to running
+    if (currentPipeline) {
+      const updatedPipeline = {
+        ...currentPipeline,
+        status: PIPELINE_STATUS.RUNNING,
+        updatedAt: new Date().toISOString(),
+      };
+      setPipelines((prev) =>
+        prev.map((p) => (p.id === currentPipeline.id ? updatedPipeline : p))
+      );
+      setCurrentPipeline(updatedPipeline);
+    }
+
     setCurrentView("viewer");
     setErrors({});
 
-    await runPipeline(pipelineForm, agents);
-  }, [pipelineForm, agents, runPipeline, isSaved, handleSavePipeline]);
+    try {
+      const result = await runPipeline(pipelineForm, agents);
 
-  const handleSelectPipeline = useCallback((pipeline) => {
-    setCurrentPipeline(pipeline);
-    setPipelineForm({
-      name: pipeline.name,
-      firstPrompt: pipeline.firstPrompt,
-    });
-    setAgents(pipeline.agents || []); // Ensure agents is always an array
-    setCurrentView("builder");
-    setErrors({});
-    setIsSaved(true); // Pipeline is saved when selected from list
-  }, []);
+      // Update pipeline status to completed and save results
+      if (currentPipeline) {
+        const completedPipeline = {
+          ...currentPipeline,
+          status: PIPELINE_STATUS.COMPLETED,
+          lastExecutionResult: result,
+          lastExecutionDate: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setPipelines((prev) =>
+          prev.map((p) => (p.id === currentPipeline.id ? completedPipeline : p))
+        );
+        setCurrentPipeline(completedPipeline);
+      }
+    } catch (error) {
+      // Update pipeline status to error
+      if (currentPipeline) {
+        const errorPipeline = {
+          ...currentPipeline,
+          status: PIPELINE_STATUS.ERROR,
+          lastExecutionError: error.message,
+          lastExecutionDate: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setPipelines((prev) =>
+          prev.map((p) => (p.id === currentPipeline.id ? errorPipeline : p))
+        );
+        setCurrentPipeline(errorPipeline);
+      }
+    }
+  }, [
+    pipelineForm,
+    agents,
+    runPipeline,
+    isSaved,
+    handleSavePipeline,
+    currentPipeline,
+    setPipelines,
+  ]);
+
+  const handleSelectPipeline = useCallback(
+    (pipeline) => {
+      setCurrentPipeline(pipeline);
+      setPipelineForm({
+        name: pipeline.name,
+        firstPrompt: pipeline.firstPrompt,
+      });
+      setAgents(pipeline.agents || []); // Ensure agents is always an array
+      setCurrentView("builder");
+      setErrors({});
+      setIsSaved(true); // Pipeline is saved when selected from list
+
+      // If pipeline has execution results, restore them
+      if (pipeline.lastExecutionResult) {
+        // Set the execution results without running the pipeline
+        resetExecution(); // Clear any existing execution state
+        // You might want to show a different view or indicate that results are from a previous run
+      }
+    },
+    [resetExecution]
+  );
 
   const handleDeletePipeline = useCallback(
     (pipelineId) => {
@@ -325,8 +388,11 @@ export default function Dashboard() {
               isRunning={isRunning}
               isFormValid={isFormValid}
               isSaved={isSaved}
+              hasLastExecution={currentPipeline?.lastExecutionResult}
+              lastExecutionDate={currentPipeline?.lastExecutionDate}
               onRunPipeline={handleRunPipeline}
               onSavePipeline={handleSavePipeline}
+              onViewResults={() => setCurrentView("viewer")}
               onClosePipeline={handleClosePipeline}
             />
           </div>
@@ -336,7 +402,13 @@ export default function Dashboard() {
         return (
           <div className="p-8 space-y-8">
             <ExecutionMonitor progress={progress} logs={logs} />
-            <PipelineResults result={result} />
+            <PipelineResults
+              result={result || currentPipeline?.lastExecutionResult}
+              isFromPreviousExecution={
+                !result && currentPipeline?.lastExecutionResult
+              }
+              lastExecutionDate={currentPipeline?.lastExecutionDate}
+            />
           </div>
         );
 

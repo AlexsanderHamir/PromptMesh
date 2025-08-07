@@ -76,6 +76,9 @@ export const usePipelineExecution = () => {
         setProgress(100);
 
         setResult(executionResult.result);
+
+        // Return the result so it can be saved to the pipeline
+        return executionResult.result;
       } catch (error) {
         addLog(
           LOG_TYPES.ERROR,
@@ -83,6 +86,7 @@ export const usePipelineExecution = () => {
         );
         setProgress(0);
         console.error("Pipeline execution error:", error);
+        throw error; // Re-throw so the caller can handle it
       } finally {
         setIsRunning(false);
       }
