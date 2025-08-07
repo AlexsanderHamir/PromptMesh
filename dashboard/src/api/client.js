@@ -1,5 +1,3 @@
-// src/api/client.js (Updated to handle file content)
-// In development, use the Vite proxy. In production, use the environment variable.
 const API_BASE_URL =
   process.env.NODE_ENV === "development"
     ? "/api"

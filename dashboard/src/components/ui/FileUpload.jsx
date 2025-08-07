@@ -1,12 +1,12 @@
-// src/components/ui/FileUpload.jsx
 import {
   Upload,
   X,
   FileText,
   Image,
-  FileSpreadsheet,
   File,
   AlertCircle,
+  Code,
+  Video,
 } from "lucide-react";
 import { useState, useRef } from "react";
 import { Button } from "./Button";
@@ -15,6 +15,7 @@ export const FileUpload = ({
   uploadedFiles = [],
   onFileUpload,
   onFileRemove,
+  onClearFiles,
   isProcessing = false,
   processingProgress = {},
   className = "",
@@ -54,17 +55,34 @@ export const FileUpload = ({
     fileInputRef.current?.click();
   };
 
-  const getFileIcon = (fileType) => {
-    switch (fileType) {
+  // Get appropriate icon for file type
+  const getFileIcon = (metadata) => {
+    switch (metadata.type) {
       case "image":
         return <Image className="w-4 h-4 text-blue-400" />;
       case "pdf":
         return <FileText className="w-4 h-4 text-red-400" />;
-      case "spreadsheet":
-        return <FileSpreadsheet className="w-4 h-4 text-green-400" />;
-      case "document":
-        return <FileText className="w-4 h-4 text-indigo-400" />;
+      case "video":
+        return <Video className="w-4 h-4 text-purple-400" />;
       case "text":
+        // Different icons for different text file types
+        const ext = metadata.name.split(".").pop().toLowerCase();
+        if (
+          [
+            "js",
+            "jsx",
+            "ts",
+            "tsx",
+            "py",
+            "java",
+            "cpp",
+            "c",
+            "php",
+            "rb",
+          ].includes(ext)
+        ) {
+          return <Code className="w-4 h-4 text-green-400" />;
+        }
         return <FileText className="w-4 h-4 text-gray-400" />;
       default:
         return <File className="w-4 h-4 text-slate-400" />;
@@ -99,7 +117,6 @@ export const FileUpload = ({
           ref={fileInputRef}
           onChange={handleFileSelect}
           multiple
-          accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.json,.xml,.html,.png,.jpg,.jpeg,.gif,.bmp,.webp,.mp3,.wav,.mp4,.avi"
           className="hidden"
         />
 
@@ -115,7 +132,7 @@ export const FileUpload = ({
                 : "Drop files here or click to upload"}
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              Supports: PDF, Word, Excel, Images, Text files, and more
+              Supports: Code, Documents, Images, PDFs, Videos, and more
             </p>
           </div>
 
@@ -130,9 +147,19 @@ export const FileUpload = ({
       {/* Uploaded Files List */}
       {uploadedFiles.length > 0 && (
         <div className="mt-4 space-y-2">
-          <h4 className="text-sm font-medium text-slate-300 mb-2">
-            Uploaded Files ({uploadedFiles.length})
-          </h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-slate-300">
+              Uploaded Files ({uploadedFiles.length})
+            </h4>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearFiles}
+              className="text-slate-400 hover:text-red-400"
+            >
+              Clear All
+            </Button>
+          </div>
 
           {uploadedFiles.map((uploadedFile) => {
             const progress = processingProgress[uploadedFile.id] || 100;
@@ -146,7 +173,7 @@ export const FileUpload = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {getFileIcon(uploadedFile.metadata.type)}
+                    {getFileIcon(uploadedFile.metadata)}
 
                     <div className="flex-1 min-w-0">
                       <p className="text-slate-200 text-sm font-medium truncate">
@@ -157,9 +184,7 @@ export const FileUpload = ({
                           {formatFileSize(uploadedFile.metadata.size)}
                         </span>
                         <span>•</span>
-                        <span className="capitalize">
-                          {uploadedFile.metadata.type}
-                        </span>
+                        <span>{uploadedFile.metadata.description}</span>
                         {hasError && (
                           <>
                             <span>•</span>
@@ -188,7 +213,7 @@ export const FileUpload = ({
                 {isProcessingThis && (
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                      <span>Processing...</span>
+                      <span>Processing {uploadedFile.metadata.type}...</span>
                       <span>{progress}%</span>
                     </div>
                     <div className="bg-slate-700 rounded-full h-1.5 overflow-hidden">
@@ -207,10 +232,10 @@ export const FileUpload = ({
                   </div>
                 )}
 
-                {/* Content Preview (for text-based files) */}
+                {/* Content Preview (for text-based files only) */}
                 {!isProcessingThis &&
                   !hasError &&
-                  uploadedFile.metadata.type !== "image" &&
+                  uploadedFile.metadata.type === "text" &&
                   uploadedFile.content && (
                     <div className="mt-2">
                       <details className="text-xs">
@@ -223,6 +248,31 @@ export const FileUpload = ({
                           {uploadedFile.content.length > 500 && "..."}
                         </div>
                       </details>
+                    </div>
+                  )}
+
+                {/* Special indicators for non-text files */}
+                {!isProcessingThis &&
+                  !hasError &&
+                  uploadedFile.metadata.type === "image" && (
+                    <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-400">
+                      📸 Image ready for AI vision analysis
+                    </div>
+                  )}
+
+                {!isProcessingThis &&
+                  !hasError &&
+                  uploadedFile.metadata.type === "pdf" && (
+                    <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                      📄 PDF attached - describe what you need help with
+                    </div>
+                  )}
+
+                {!isProcessingThis &&
+                  !hasError &&
+                  uploadedFile.metadata.type === "video" && (
+                    <div className="mt-2 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs text-purple-400">
+                      🎥 Video attached - describe your analysis needs
                     </div>
                   )}
               </div>

@@ -1,58 +1,110 @@
-// src/hooks/useFileUpload.js
 import { useState, useCallback } from "react";
-import * as mammoth from "mammoth";
-import * as XLSX from "xlsx";
-
-// Dynamic PDF.js imports to handle worker configuration properly
-let getDocument = null;
-let pdfjsLib = null;
-
-// Initialize PDF.js only when needed
-const initPDFJS = async () => {
-  if (!pdfjsLib) {
-    pdfjsLib = await import("pdfjs-dist");
-    getDocument = pdfjsLib.getDocument;
-
-    // Configure worker - use CDN for better compatibility
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-  }
-  return { getDocument: pdfjsLib.getDocument };
-};
 
 export const useFileUpload = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState({});
 
-  // File type detection
+  // Simple file type detection - only three categories
   const getFileType = (file) => {
     const extension = file.name.split(".").pop().toLowerCase();
     const mimeType = file.type.toLowerCase();
 
-    if (mimeType.startsWith("image/")) return "image";
-    if (mimeType === "application/pdf") return "pdf";
+    // Images
     if (
-      mimeType.includes("spreadsheet") ||
-      ["xlsx", "xls", "csv"].includes(extension)
-    )
-      return "spreadsheet";
-    if (mimeType.includes("document") || ["docx", "doc"].includes(extension))
-      return "document";
-    if (
-      mimeType.startsWith("text/") ||
-      ["txt", "md", "json", "xml", "html"].includes(extension)
-    )
-      return "text";
-    if (mimeType.startsWith("audio/")) return "audio";
-    if (mimeType.startsWith("video/")) return "video";
+      mimeType.startsWith("image/") ||
+      [
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "bmp",
+        "webp",
+        "svg",
+        "ico",
+        "tiff",
+      ].includes(extension)
+    ) {
+      return "image";
+    }
 
-    return "unknown";
+    // PDFs
+    if (mimeType === "application/pdf" || extension === "pdf") {
+      return "pdf";
+    }
+
+    // Videos
+    if (
+      mimeType.startsWith("video/") ||
+      ["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm", "m4v", "3gp"].includes(
+        extension
+      )
+    ) {
+      return "video";
+    }
+
+    // Everything else is treated as text
+    return "text";
+  };
+
+  // Get a user-friendly description of the file type
+  const getFileDescription = (file) => {
+    const extension = file.name.split(".").pop().toLowerCase();
+    const type = getFileType(file);
+
+    if (type === "image") return "Image";
+    if (type === "pdf") return "PDF Document";
+    if (type === "video") return "Video";
+
+    // For text files, be more specific
+    const textTypes = {
+      js: "JavaScript",
+      jsx: "React JSX",
+      ts: "TypeScript",
+      tsx: "React TypeScript",
+      py: "Python",
+      java: "Java",
+      cpp: "C++",
+      c: "C",
+      h: "Header",
+      css: "CSS",
+      html: "HTML",
+      php: "PHP",
+      rb: "Ruby",
+      go: "Go",
+      rs: "Rust",
+      swift: "Swift",
+      kt: "Kotlin",
+      scala: "Scala",
+      sh: "Shell Script",
+      bat: "Batch File",
+      sql: "SQL",
+      json: "JSON",
+      xml: "XML",
+      yaml: "YAML",
+      yml: "YAML",
+      md: "Markdown",
+      txt: "Text",
+      csv: "CSV Data",
+      log: "Log File",
+      conf: "Config",
+      ini: "Settings",
+      docx: "Word Document",
+      doc: "Word Document",
+      xlsx: "Excel Spreadsheet",
+      xls: "Excel Spreadsheet",
+      pptx: "PowerPoint",
+      ppt: "PowerPoint",
+    };
+
+    return textTypes[extension] || "Text File";
   };
 
   // Process different file types
   const processFile = async (file) => {
     const fileType = getFileType(file);
-    const fileId = `${Date.now()}_${file.name}`;
+    const fileDescription = getFileDescription(file);
+    const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     setProcessingProgress((prev) => ({ ...prev, [fileId]: 0 }));
 
@@ -62,9 +114,12 @@ export const useFileUpload = () => {
         name: file.name,
         size: file.size,
         type: fileType,
+        description: fileDescription,
         mimeType: file.type,
         lastModified: file.lastModified,
       };
+
+      setProcessingProgress((prev) => ({ ...prev, [fileId]: 20 }));
 
       switch (fileType) {
         case "image":
@@ -73,23 +128,13 @@ export const useFileUpload = () => {
         case "pdf":
           content = await processPDF(file, fileId);
           break;
-        case "spreadsheet":
-          content = await processSpreadsheet(file, fileId);
-          break;
-        case "document":
-          content = await processDocument(file, fileId);
+        case "video":
+          content = await processVideo(file, fileId);
           break;
         case "text":
+        default:
           content = await processText(file, fileId);
           break;
-        case "audio":
-          content = `[AUDIO FILE: ${file.name}] - Audio files require special processing. Consider transcription services.`;
-          break;
-        case "video":
-          content = `[VIDEO FILE: ${file.name}] - Video files require special processing. Consider frame extraction or transcription.`;
-          break;
-        default:
-          content = `[UNSUPPORTED FILE: ${file.name}] - This file type cannot be processed automatically.`;
       }
 
       setProcessingProgress((prev) => ({ ...prev, [fileId]: 100 }));
@@ -103,6 +148,9 @@ export const useFileUpload = () => {
       };
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
+
+      setProcessingProgress((prev) => ({ ...prev, [fileId]: 100 }));
+
       return {
         id: fileId,
         file,
@@ -111,6 +159,7 @@ export const useFileUpload = () => {
           name: file.name,
           size: file.size,
           type: fileType,
+          description: fileDescription,
           mimeType: file.type,
           error: error.message,
         },
@@ -119,16 +168,13 @@ export const useFileUpload = () => {
     }
   };
 
-  // Process image files
+  // Process images - convert to base64
   const processImage = async (file, fileId) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
+        setProcessingProgress((prev) => ({ ...prev, [fileId]: 80 }));
         const base64 = e.target.result;
-        setProcessingProgress((prev) => ({ ...prev, [fileId]: 50 }));
-
-        // For AI models, we need to provide the image in base64 format
-        // Most models expect the format: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...
         resolve(base64);
       };
       reader.onerror = () => reject(new Error("Failed to read image file"));
@@ -136,87 +182,72 @@ export const useFileUpload = () => {
     });
   };
 
-  // Process PDF files
+  // Process PDFs - placeholder for now to avoid technical issues
   const processPDF = async (file, fileId) => {
-    // Initialize PDF.js dynamically
-    const { getDocument } = await initPDFJS();
+    setProcessingProgress((prev) => ({ ...prev, [fileId]: 50 }));
 
-    const arrayBuffer = await file.arrayBuffer();
-    setProcessingProgress((prev) => ({ ...prev, [fileId]: 20 }));
+    const fileName = file.name;
+    const fileSize = (file.size / 1024).toFixed(2);
 
-    const pdf = await getDocument({ data: arrayBuffer }).promise;
-    const numPages = pdf.numPages;
-    let fullText = "";
+    setProcessingProgress((prev) => ({ ...prev, [fileId]: 80 }));
 
-    for (let i = 1; i <= numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item) => item.str).join(" ");
-      fullText += `\n--- Page ${i} ---\n${pageText}\n`;
+    return `[PDF DOCUMENT: ${fileName}]
+File Size: ${fileSize} KB
 
-      setProcessingProgress((prev) => ({
-        ...prev,
-        [fileId]: Math.round((i / numPages) * 80) + 20,
-      }));
-    }
+This PDF has been attached to your prompt. Please describe what you'd like me to analyze or help you with regarding this PDF. I can:
 
-    return fullText.trim();
+• Help you understand PDF content if you describe it
+• Provide guidance on PDF processing tools
+• Suggest ways to extract text from PDFs
+• Analyze PDF structure or formatting questions
+• Assist with PDF-related workflows
+
+What would you like me to help you with regarding this PDF?`;
   };
 
-  // Process spreadsheet files
-  const processSpreadsheet = async (file, fileId) => {
-    const arrayBuffer = await file.arrayBuffer();
-    setProcessingProgress((prev) => ({ ...prev, [fileId]: 30 }));
+  // Process videos - placeholder
+  const processVideo = async (file, fileId) => {
+    setProcessingProgress((prev) => ({ ...prev, [fileId]: 50 }));
 
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-    let content = "";
+    const fileName = file.name;
+    const fileSize = (file.size / 1024 / 1024).toFixed(2);
 
-    workbook.SheetNames.forEach((sheetName, index) => {
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    setProcessingProgress((prev) => ({ ...prev, [fileId]: 80 }));
 
-      content += `\n--- Sheet: ${sheetName} ---\n`;
+    return `[VIDEO FILE: ${fileName}]
+File Size: ${fileSize} MB
 
-      // Convert to readable format
-      jsonData.forEach((row, rowIndex) => {
-        if (row.length > 0) {
-          content += `Row ${rowIndex + 1}: ${row.join(" | ")}\n`;
-        }
-      });
+This video has been attached to your prompt. I can help you with:
 
-      setProcessingProgress((prev) => ({
-        ...prev,
-        [fileId]:
-          Math.round(((index + 1) / workbook.SheetNames.length) * 70) + 30,
-      }));
-    });
+• Video analysis strategies
+• Extracting frames or timestamps
+• Video processing workflows  
+• Transcription approaches
+• Video format conversions
+• Multimedia project planning
 
-    return content.trim();
+Please describe what you'd like to do with this video file.`;
   };
 
-  // Process document files (Word, etc.)
-  const processDocument = async (file, fileId) => {
-    if (file.name.toLowerCase().endsWith(".docx")) {
-      const arrayBuffer = await file.arrayBuffer();
-      setProcessingProgress((prev) => ({ ...prev, [fileId]: 50 }));
-
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      return result.value;
-    } else {
-      // For other document types, try to read as text
-      return await processText(file, fileId);
-    }
-  };
-
-  // Process text files
+  // Process text files - this handles EVERYTHING else
   const processText = async (file, fileId) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setProcessingProgress((prev) => ({ ...prev, [fileId]: 80 }));
-        resolve(e.target.result);
+        const content = e.target.result;
+
+        // Add context header based on file extension
+        const extension = file.name.split(".").pop().toLowerCase();
+        let header = `[${getFileDescription(file).toUpperCase()}: ${
+          file.name
+        }]\n\n`;
+
+        resolve(header + content);
       };
-      reader.onerror = () => reject(new Error("Failed to read text file"));
+      reader.onerror = () => reject(new Error("Failed to read file"));
+
+      // Try reading as text first
       reader.readAsText(file);
     });
   };
@@ -226,18 +257,23 @@ export const useFileUpload = () => {
     setIsProcessing(true);
     const processedFiles = [];
 
-    for (const file of files) {
-      const processed = await processFile(file);
-      processedFiles.push(processed);
+    try {
+      for (const file of files) {
+        const processed = await processFile(file);
+        processedFiles.push(processed);
+      }
+
+      setUploadedFiles((prev) => [...prev, ...processedFiles]);
+    } catch (error) {
+      console.error("Error during file upload:", error);
+    } finally {
+      setIsProcessing(false);
+
+      // Clean up progress tracking
+      setTimeout(() => {
+        setProcessingProgress({});
+      }, 2000);
     }
-
-    setUploadedFiles((prev) => [...prev, ...processedFiles]);
-    setIsProcessing(false);
-
-    // Clean up progress tracking
-    setTimeout(() => {
-      setProcessingProgress({});
-    }, 2000);
 
     return processedFiles;
   }, []);
@@ -257,24 +293,26 @@ export const useFileUpload = () => {
   const getFormattedContent = useCallback(() => {
     if (uploadedFiles.length === 0) return "";
 
-    let formatted = "";
+    let formatted = "--- ATTACHED FILES ---\n";
 
     uploadedFiles.forEach((uploadedFile, index) => {
       const { content, metadata } = uploadedFile;
 
       formatted += `\n--- UPLOADED FILE ${index + 1}: ${metadata.name} ---\n`;
-      formatted += `File Type: ${metadata.type}\n`;
-      formatted += `Size: ${(metadata.size / 1024).toFixed(2)} KB\n`;
+      formatted += `File Type: ${metadata.description}\n`;
+      formatted += `Size: ${(metadata.size / 1024).toFixed(2)} KB\n\n`;
 
       if (metadata.type === "image") {
-        formatted += `Content: [IMAGE DATA - Base64 encoded image that can be processed by vision models]\n`;
+        formatted += `Content: [IMAGE - Base64 encoded for AI vision models]\n`;
         formatted += `Image Data: ${content}\n`;
       } else {
         formatted += `Content:\n${content}\n`;
       }
 
-      formatted += `--- END FILE ${index + 1} ---\n\n`;
+      formatted += `\n--- END FILE ${index + 1} ---\n`;
     });
+
+    formatted += "\n--- END ATTACHED FILES ---";
 
     return formatted;
   }, [uploadedFiles]);
