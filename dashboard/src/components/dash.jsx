@@ -12,7 +12,7 @@ import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { usePipelineExecution } from "../hooks/usePipelineExecution";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { generateId, validatePipelineForm, validateAgentForm } from "../utils";
-import { PIPELINE_STATUS } from "../constants";
+import { PIPELINE_STATUS, DASH_VIEWS } from "../constants";
 
 export default function Dashboard() {
   // Use localStorage for pipelines persistence
@@ -422,37 +422,30 @@ export default function Dashboard() {
     }
   };
 
-  // Render header title and subtitle based on current view
-  const getHeaderContent = () => {
+  const getHeaderContent = (
+    currentView,
+    currentPipeline,
+    hasUnsavedChanges
+  ) => {
     switch (currentView) {
-      case "welcome":
+      case DASH_VIEWS.BUILDER.id:
         return {
-          title: "Welcome to PromptMesh",
-          subtitle: null,
+          title: DASH_VIEWS.BUILDER.title(currentPipeline, hasUnsavedChanges),
+          subtitle: DASH_VIEWS.BUILDER.subtitle,
         };
-      case "builder":
-        const title = currentPipeline ? currentPipeline.name : "New Pipeline";
-        const unsavedIndicator =
-          hasUnsavedChanges && currentPipeline ? " (Unsaved Changes)" : "";
-        return {
-          title: title + unsavedIndicator,
-          subtitle:
-            "Configure your AI agent pipeline with custom prompts and specialized agents",
-        };
-      case "viewer":
-        return {
-          title: "Pipeline Execution",
-          subtitle: null,
-        };
+      case DASH_VIEWS.VIEWER.id:
+        return DASH_VIEWS.VIEWER;
+      case DASH_VIEWS.WELCOME.id:
       default:
-        return {
-          title: "Welcome to PromptMesh",
-          subtitle: null,
-        };
+        return DASH_VIEWS.WELCOME;
     }
   };
 
-  const headerContent = getHeaderContent();
+  const headerContent = getHeaderContent(
+    currentView,
+    currentPipeline,
+    hasUnsavedChanges
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-50">
