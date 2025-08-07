@@ -18,6 +18,7 @@ export const usePipelineExecution = () => {
     setLogs((prev) => [...prev, { type, message, timestamp }]);
   }, []);
 
+  // runPipeline is creating the pipeline and adding the agents to it on the go.
   const runPipeline = useCallback(
     async (pipelineForm, agents) => {
       setIsRunning(true);
