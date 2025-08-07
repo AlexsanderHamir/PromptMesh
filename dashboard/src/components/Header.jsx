@@ -1,4 +1,4 @@
-import { Plus, Settings, Zap } from "lucide-react";
+import { Plus, Zap } from "lucide-react";
 import { Button } from "./ui/Button";
 
 export const Header = ({ onCreateNewPipeline }) => (
@@ -19,9 +19,6 @@ export const Header = ({ onCreateNewPipeline }) => (
         <Button onClick={onCreateNewPipeline}>
           <Plus className="w-4 h-4" />
           New Pipeline
-        </Button>
-        <Button variant="ghost" size="sm">
-          <Settings className="w-4 h-4" />
         </Button>
       </div>
     </div>
