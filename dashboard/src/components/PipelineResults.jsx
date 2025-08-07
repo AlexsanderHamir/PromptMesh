@@ -6,11 +6,14 @@ import {
   ArrowLeft,
   Edit,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { LogEntry } from "./ui/LogEntry";
 import { formatDate } from "../utils";
+import { useState } from "react";
 
 export const PipelineResults = ({
   result,
@@ -24,6 +27,30 @@ export const PipelineResults = ({
   onClosePipeline,
   pipelineName,
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  // Copy result to clipboard
+  const copyToClipboard = async () => {
+    if (result) {
+      try {
+        await navigator.clipboard.writeText(result);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+      } catch (err) {
+        console.error("Failed to copy: ", err);
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = result;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
+  };
+
   // Determine what to show based on available data
   const hasResult = result && result.trim();
   const hasLogs = logs && logs.length > 0;
@@ -137,10 +164,30 @@ export const PipelineResults = ({
               {/* Show result if available */}
               {hasResult && (
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
-                    Final Result
-                  </h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      Final Result
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyToClipboard}
+                      className="text-slate-400 hover:text-slate-200"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <div className="prose prose-invert max-w-none">
                     <div className="whitespace-pre-wrap text-slate-200 leading-relaxed bg-slate-800/50 rounded-lg p-4">
                       {result}
