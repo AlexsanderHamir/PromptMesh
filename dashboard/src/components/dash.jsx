@@ -18,7 +18,7 @@ export default function Dashboard() {
   // Use localStorage for pipelines persistence
   const [pipelines, setPipelines] = useLocalStorage("promptmesh_pipelines", []);
   const [currentPipeline, setCurrentPipeline] = useState(null);
-  const [currentView, setCurrentView] = useState("welcome");
+  const [currentView, setCurrentView] = useState(DASH_VIEWS.WELCOME.id);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [pipelineToDelete, setPipelineToDelete] = useState(null);
@@ -71,7 +71,7 @@ export default function Dashboard() {
 
   // Event handlers
   const handleCreateNewPipeline = useCallback(() => {
-    setCurrentView("builder");
+    setCurrentView(DASH_VIEWS.BUILDER.id);
     setCurrentPipeline(null);
     setPipelineForm({ name: "", firstPrompt: "" });
     setAgents([]);
@@ -81,7 +81,7 @@ export default function Dashboard() {
   }, [resetExecution]);
 
   const handleClosePipeline = useCallback(() => {
-    setCurrentView("welcome");
+    setCurrentView(DASH_VIEWS.WELCOME.id);
     setCurrentPipeline(null);
     setPipelineForm({ name: "", firstPrompt: "" });
     setAgents([]);
@@ -233,7 +233,7 @@ export default function Dashboard() {
       setCurrentPipeline(updatedPipeline);
     }
 
-    setCurrentView("viewer");
+    setCurrentView(DASH_VIEWS.VIEWER.id);
     setErrors({});
 
     try {
@@ -287,7 +287,7 @@ export default function Dashboard() {
         firstPrompt: pipeline.firstPrompt,
       });
       setAgents(pipeline.agents || []); // Ensure agents is always an array
-      setCurrentView("builder");
+      setCurrentView(DASH_VIEWS.BUILDER.id);
       setErrors({});
       setIsSaved(true); // Pipeline is saved when selected from list
 
@@ -319,7 +319,7 @@ export default function Dashboard() {
       // If the deleted pipeline was currently selected, reset the view
       if (currentPipeline?.id === pipelineToDelete.id) {
         setCurrentPipeline(null);
-        setCurrentView("welcome");
+        setCurrentView(DASH_VIEWS.WELCOME.id);
         setPipelineForm({ name: "", firstPrompt: "" });
         setAgents([]);
         resetExecution();
@@ -360,7 +360,7 @@ export default function Dashboard() {
   // Render main content based on current view
   const renderMainContent = () => {
     switch (currentView) {
-      case "welcome":
+      case DASH_VIEWS.WELCOME.id:
         return (
           <WelcomeScreen
             onCreateNewPipeline={handleCreateNewPipeline}
@@ -368,7 +368,7 @@ export default function Dashboard() {
           />
         );
 
-      case "builder":
+      case DASH_VIEWS.BUILDER.id:
         return (
           <div className="p-8 space-y-8">
             <PipelineConfiguration
@@ -392,13 +392,13 @@ export default function Dashboard() {
               lastExecutionDate={currentPipeline?.lastExecutionDate}
               onRunPipeline={handleRunPipeline}
               onSavePipeline={handleSavePipeline}
-              onViewResults={() => setCurrentView("viewer")}
+              onViewResults={() => setCurrentView(DASH_VIEWS.VIEWER.id)}
               onClosePipeline={handleClosePipeline}
             />
           </div>
         );
 
-      case "viewer":
+      case DASH_VIEWS.VIEWER.id:
         return (
           <div className="p-8 space-y-8">
             <ExecutionMonitor progress={progress} logs={logs} />
