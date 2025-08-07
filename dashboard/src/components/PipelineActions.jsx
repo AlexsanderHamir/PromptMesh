@@ -34,12 +34,10 @@ export const PipelineActions = ({
         {isSaved ? "Saved" : "Save Pipeline"}
       </Button>
 
-      {isSaved && (
-        <Button variant="ghost" onClick={onClosePipeline}>
-          <X className="w-4 h-4" />
-          Close
-        </Button>
-      )}
+      <Button variant="ghost" onClick={onClosePipeline}>
+        <X className="w-4 h-4" />
+        Close
+      </Button>
     </div>
 
     {!isFormValid && (

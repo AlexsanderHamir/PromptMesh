@@ -7,6 +7,7 @@ export const AgentConfiguration = ({
   errors,
   onShowAddAgent,
   onRemoveAgent,
+  onClosePipeline,
 }) => (
   <Card
     title="Agent Configuration"
@@ -14,6 +15,12 @@ export const AgentConfiguration = ({
       agents.length > 0 ? `(${agents.length} configured)` : ""
     }`}
     icon={<Bot className="w-5 h-5" />}
+    rightAction={
+      <Button variant="ghost" size="sm" onClick={onClosePipeline}>
+        <X className="w-4 h-4" />
+        Close
+      </Button>
+    }
   >
     <div className="flex justify-between items-center mb-6">
       <div>
