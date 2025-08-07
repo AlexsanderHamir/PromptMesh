@@ -1,120 +1,64 @@
-# API Client Documentation (`client.js`)
+# API Documentation
 
 ## Overview
 
-The `ApiClient` class provides a centralized interface for all backend API communications in the PromptMesh application. It's designed to:
+The PromptMesh API is designed as a **stateless execution engine**. The server does not store persistent pipeline configurations - all pipeline and agent configurations are managed by the frontend using IndexedDB. The server only handles pipeline execution through a single endpoint.
 
-- Handle all HTTP requests consistently
-- Manage API base URL configuration
-- Standardize error handling
-- Provide pipeline-specific methods
+## Architecture
 
-## Key Implementation Details
-
-```javascript
-const API_BASE_URL =
-  process.env.NODE_ENV === "development"
-    ? "/api"  // Uses Vite proxy in development
-    : process.env.REACT_APP_API_URL || "http://localhost:8080";
-
-class ApiClient {
-  async request(endpoint, options = {}) {
-    // Core request handling with error management
-  }
-
-  // Pipeline operations
-  async createPipeline(name, firstPrompt) { ... }
-  async addAgentToPipeline(pipelineId, agent) { ... }
-  async startPipeline(pipelineId) { ... }
-}
-
-export const apiClient = new ApiClient();
+```mermaid
+graph TD
+    A[Frontend - IndexedDB] -->|Complete Pipeline Config| B[Server - Execute Pipeline]
+    B -->|Result| A
+    B -->|Cleanup| C[Session Expired]
 ```
 
-## Integration Points
+## Base URL
 
-### 1. Used by `usePipelineExecution` Hook
+- **Development**: `/api` (proxied through Vite)
+- **Production**: `REACT_APP_API_URL` environment variable
+- **Fallback**: `http://localhost:8080`
 
-The hook consumes all three API methods during pipeline execution:
+## Endpoints
 
-```javascript
-// In usePipelineExecution.js
-const runPipeline = async (pipelineForm, agents) => {
-  // 1. Create pipeline
-  const createResult = await apiClient.createPipeline(
-    pipelineForm.name,
-    pipelineForm.firstPrompt
-  );
+### `POST /pipelines/execute`
 
-  // 2. Add all agents
-  for (const agent of agents) {
-    await apiClient.addAgentToPipeline(createResult.pipeline_id, agent);
-  }
-
-  // 3. Execute pipeline
-  const executionResult = await apiClient.startPipeline(
-    createResult.pipeline_id
-  );
-};
-```
-
-### 2. Error Handling Flow
-
-The client implements a standardized error handling pattern:
-
-1. Checks for HTTP errors (non-2xx responses)
-2. Attempts to parse error messages from response
-3. Throws consistent Error objects
-4. Logs errors to console
-
-This flows up to the hook which:
-
-- Captures errors in execution logs
-- Provides visual feedback through the UI
-- Preserves execution state
-
-## API Methods
-
-### `createPipeline(name, firstPrompt)`
-
-- **Purpose**: Initializes a new pipeline
+- **Purpose**: Executes a complete pipeline with all configuration provided in a single request
 - **Parameters**:
-  - `name`: Pipeline name
+  - `name`: Pipeline name (for logging purposes)
   - `firstPrompt`: Initial user prompt
-- **Used in**: First step of pipeline execution
+  - `agents`: Array of agent configurations
+- **Used in**: Pipeline execution
 - **Payload**:
   ```json
   {
     "name": "Marketing Pipeline",
-    "first_prompt": "Create social media posts..."
+    "first_prompt": "Create social media posts...",
+    "agents": [
+      {
+        "name": "Content Generator",
+        "role": "Writer",
+        "system_msg": "You are a creative writer...",
+        "provider": "openai",
+        "model": "gpt-4"
+      },
+      {
+        "name": "Editor",
+        "role": "Reviewer",
+        "system_msg": "You are an editor...",
+        "provider": "anthropic",
+        "model": "claude-3-sonnet"
+      }
+    ]
   }
   ```
-
-### `addAgentToPipeline(pipelineId, agent)`
-
-- **Purpose**: Adds an agent to existing pipeline
-- **Parameters**:
-  - `pipelineId`: ID from createPipeline response
-  - `agent`: Full agent configuration object
-- **Used in**: Agent configuration phase
-- **Payload**:
+- **Response**:
   ```json
   {
-    "pipeline_id": "pipe_123",
-    "name": "Content Generator",
-    "role": "Writer",
-    "system_msg": "You are a creative writer...",
-    "provider": "openai",
-    "model": "gpt-4"
+    "result": "Generated and edited social media content...",
+    "message": "Pipeline 'Marketing Pipeline' executed successfully"
   }
   ```
-
-### `startPipeline(pipelineId)`
-
-- **Purpose**: Executes the configured pipeline
-- **Parameters**: `pipelineId` - ID of pipeline to execute
-- **Used in**: Final execution phase
-- **Returns**: Pipeline execution results
 
 ## Environment Configuration
 
@@ -123,6 +67,14 @@ This flows up to the hook which:
 | Development | `/api`           | Vite proxy           |
 | Production  | Custom URL       | `REACT_APP_API_URL`  |
 | Fallback    | `localhost:8080` | Hardcoded default    |
+
+## Stateless Design Benefits
+
+1. **No Persistent Storage**: Server doesn't store pipeline configurations
+2. **Single Request**: Complete pipeline execution in one API call
+3. **Frontend Control**: All pipeline management happens in the frontend
+4. **Scalability**: Server can handle multiple concurrent executions without state conflicts
+5. **Simplicity**: Minimal server complexity with single responsibility
 
 ## Error Handling Architecture
 
@@ -134,8 +86,8 @@ sequenceDiagram
     participant Backend
 
     Component->>usePipelineExecution: runPipeline()
-    usePipelineExecution->>ApiClient: createPipeline()
-    ApiClient->>Backend: POST /pipelines/create
+    usePipelineExecution->>ApiClient: executePipeline()
+    ApiClient->>Backend: POST /pipelines/execute
     Backend-->>ApiClient: Error Response
     ApiClient-->>usePipelineExecution: Throws Error
     usePipelineExecution->>Component: Rejects Promise
@@ -146,15 +98,14 @@ sequenceDiagram
 
 1. **Always await** API calls within try/catch blocks
 2. **Consume errors** from both API and execution layers
-3. **Use the singleton instance** (`apiClient`) rather than creating new instances
-4. **Extend carefully** - Add new methods following the same pattern:
-   ```javascript
-   async newEndpoint(params) {
-     return this.request("/new-endpoint", {
-       method: "POST",
-       body: JSON.stringify(params)
-     });
-   }
-   ```
+3. **Validate configuration** before sending to server
+4. **Store results in frontend** - server doesn't persist execution results
+5. **Use IndexedDB** for all persistent pipeline configurations
 
-This documentation shows how the API client serves as the critical bridge between the frontend application and backend services, enabling the complex pipeline operations while maintaining clean separation of concerns.
+## Execution Flow
+
+1. **Frontend** retrieves pipeline configuration from IndexedDB
+2. **Frontend** sends complete configuration to server in single request
+3. **Server** creates agents, executes pipeline, and returns results
+4. **Frontend** saves results to IndexedDB
+5. **Server** automatically cleans up execution session after 1 hour

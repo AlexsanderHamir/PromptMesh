@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/AlexsanderHamir/PromptMesh/agents"
 	"github.com/AlexsanderHamir/PromptMesh/orchestration"
@@ -11,10 +12,20 @@ import (
 )
 
 func NewServer() *Server {
-	return &Server{
-		agents:    make(map[string]*agents.Agent),
-		pipelines: make(map[string]*PipelineInfo),
+	s := &Server{
+		executions: make(map[string]*PipelineExecution),
 	}
+
+	// Start cleanup goroutine
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.cleanupOldExecutions()
+		}
+	}()
+
+	return s
 }
 
 func InitServer() *http.ServeMux {
@@ -45,140 +56,103 @@ func InitServer() *http.ServeMux {
 
 // RegisterRoutes sets up the server's HTTP routes with CORS middleware
 func (s *Server) registerRoutes(mux *http.ServeMux, corsHandler func(http.HandlerFunc) http.HandlerFunc) {
-	mux.HandleFunc("/pipelines/create", corsHandler(s.CreatePipeline))
-	mux.HandleFunc("/pipelines/add-agent", corsHandler(s.AddAgentToPipeline))
-	mux.HandleFunc("/pipelines/start", corsHandler(s.StartPipeline))
+	mux.HandleFunc("/pipelines/execute", corsHandler(s.ExecutePipeline))
 }
 
-// Create an empty pipeline
-func (s *Server) CreatePipeline(w http.ResponseWriter, r *http.Request) {
+// ExecutePipeline handles the complete pipeline execution in one request
+func (s *Server) ExecutePipeline(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req CreatePipelineRequest
+	var req ExecutePipelineRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.sendError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
+	// Validate required fields
 	if req.Name == "" || req.FirstPrompt == "" {
 		s.sendError(w, http.StatusBadRequest, "Missing required fields: name, first_prompt")
 		return
 	}
 
+	if len(req.Agents) == 0 {
+		s.sendError(w, http.StatusBadRequest, "At least one agent is required")
+		return
+	}
+
+	// Create execution session
+	executionID := generateID(PIPELINE_PREFIX)
 	manager := &orchestration.AgentManager{
 		FirstPrompt: req.FirstPrompt,
 	}
 
-	s.mutex.Lock()
-	pipelineID := generateID(PIPELINE_PREFIX)
-	s.pipelines[pipelineID] = &PipelineInfo{
+	execution := &PipelineExecution{
+		ID:          executionID,
 		Name:        req.Name,
 		Manager:     manager,
-		AgentIDs:    []string{},
 		FirstPrompt: req.FirstPrompt,
-		IsBuilt:     false,
+		Agents:      []*agents.Agent{},
+		CreatedAt:   time.Now(),
 	}
+
+	// Create and add agents to the pipeline
+	for i, agentConfig := range req.Agents {
+		if agentConfig.Name == "" || agentConfig.Role == "" || agentConfig.SystemMsg == "" || agentConfig.Provider == "" {
+			s.sendError(w, http.StatusBadRequest, fmt.Sprintf("Agent %d missing required fields: name, role, system_msg, provider", i+1))
+			return
+		}
+
+		envVar, ok := shared.ProviderEnvVars[agentConfig.Provider]
+		if !ok {
+			s.sendError(w, http.StatusBadRequest, fmt.Sprintf("Provider '%s' is not supported. Supported providers: %s", agentConfig.Provider, getSupportedProviders()))
+			return
+		}
+
+		agent, err := agents.NewAgent(
+			agentConfig.Name,
+			agentConfig.Role,
+			agentConfig.SystemMsg,
+			agentConfig.Provider,
+			envVar,
+			agentConfig.Model,
+		)
+		if err != nil {
+			s.sendError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create agent '%s': %v", agentConfig.Name, err))
+			return
+		}
+
+		execution.Agents = append(execution.Agents, agent)
+		manager.AddToPipeline(agent)
+	}
+
+	// Store execution session
+	s.mutex.Lock()
+	s.executions[executionID] = execution
 	s.mutex.Unlock()
 
-	s.sendJSON(w, http.StatusCreated, CreatePipelineResponse{
-		PipelineID: pipelineID,
-		Message:    fmt.Sprintf("Empty pipeline '%s' created successfully", req.Name),
-	})
-}
-
-// Create agent and add to pipeline in one step
-func (s *Server) AddAgentToPipeline(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	var req AddAgentToPipelineRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.sendError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-
-	if req.PipelineID == "" || req.Name == "" || req.Role == "" || req.SystemMsg == "" || req.Provider == "" {
-		s.sendError(w, http.StatusBadRequest, "Missing required fields: pipeline_id, name, role, system_msg, provider")
-		return
-	}
-
-	envVar, ok := shared.ProviderEnvVars[req.Provider]
-	if !ok {
-		s.sendError(w, http.StatusBadRequest, fmt.Sprintf("Provider '%s' is not supported. Supported providers: %s", req.Provider, getSupportedProviders()))
-		return
-	}
+	// Execute the pipeline
+	result, err := manager.StartPipeline()
 
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	now := time.Now()
+	execution.CompletedAt = &now
 
-	pipeline, pipelineExists := s.pipelines[req.PipelineID]
-	if !pipelineExists {
-		s.sendError(w, http.StatusNotFound, fmt.Sprintf("Pipeline with ID '%s' not found", req.PipelineID))
-		return
-	}
-
-	agent, err := agents.NewAgent(req.Name, req.Role, req.SystemMsg, req.Provider, envVar, req.Model)
 	if err != nil {
-		s.sendError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create agent: %v", err))
-		return
-	}
-
-	agentID := generateID(AGENT_PRFIX)
-	s.agents[agentID] = agent
-
-	pipeline.AgentIDs = append(pipeline.AgentIDs, agentID)
-	pipeline.Manager.AddToPipeline(agent)
-	pipeline.IsBuilt = false
-
-	agentOrder := len(pipeline.AgentIDs)
-
-	s.sendJSON(w, http.StatusCreated, AddAgentToPipelineResponse{
-		AgentID:    agentID,
-		Message:    fmt.Sprintf("Agent '%s' created and added to pipeline '%s' at position %d", agent.Name, pipeline.Name, agentOrder),
-		AgentCount: len(pipeline.AgentIDs),
-		AgentOrder: agentOrder,
-	})
-}
-
-func (s *Server) StartPipeline(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	var req StartPipelineRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.sendError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
-
-	if req.PipelineID == "" {
-		s.sendError(w, http.StatusBadRequest, "Missing required field: pipeline_id")
-		return
-	}
-
-	s.mutex.RLock()
-	pipeline, ok := s.pipelines[req.PipelineID]
-	s.mutex.RUnlock()
-
-	if !ok {
-		s.sendError(w, http.StatusNotFound, fmt.Sprintf("Pipeline with ID '%s' not found", req.PipelineID))
-		return
-	}
-
-	result, err := pipeline.Manager.StartPipeline()
-	if err != nil {
+		errorMsg := err.Error()
+		execution.Error = &errorMsg
+		s.mutex.Unlock()
 		s.sendError(w, http.StatusInternalServerError, fmt.Sprintf("Pipeline execution failed: %v", err))
 		return
 	}
 
-	s.sendJSON(w, http.StatusOK, StartPipelineResponse{
+	execution.Result = &result
+	s.mutex.Unlock()
+
+	s.sendJSON(w, http.StatusOK, ExecutePipelineResponse{
 		Result:  result,
-		Message: fmt.Sprintf("Pipeline '%s' executed successfully", pipeline.Name),
+		Message: fmt.Sprintf("Pipeline '%s' executed successfully", req.Name),
 	})
 }

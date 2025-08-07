@@ -32,36 +32,20 @@ class ApiClient {
     }
   }
 
-  // Pipeline APIs
-  async createPipeline(name, firstPrompt) {
-    return this.request("/pipelines/create", {
+  // Single pipeline execution API (stateless - server only handles execution)
+  async executePipeline(pipelineForm, agents) {
+    return this.request("/pipelines/execute", {
       method: "POST",
       body: JSON.stringify({
-        name,
-        first_prompt: firstPrompt,
-      }),
-    });
-  }
-
-  async addAgentToPipeline(pipelineId, agent) {
-    return this.request("/pipelines/add-agent", {
-      method: "POST",
-      body: JSON.stringify({
-        pipeline_id: pipelineId,
-        name: agent.name,
-        role: agent.role,
-        system_msg: agent.systemMsg,
-        provider: agent.provider,
-        model: agent.model || "",
-      }),
-    });
-  }
-
-  async startPipeline(pipelineId) {
-    return this.request("/pipelines/start", {
-      method: "POST",
-      body: JSON.stringify({
-        pipeline_id: pipelineId,
+        name: pipelineForm.name,
+        first_prompt: pipelineForm.firstPrompt,
+        agents: agents.map(agent => ({
+          name: agent.name,
+          role: agent.role,
+          system_msg: agent.systemMsg,
+          provider: agent.provider,
+          model: agent.model || "",
+        })),
       }),
     });
   }

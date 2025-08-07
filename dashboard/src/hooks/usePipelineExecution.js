@@ -18,7 +18,7 @@ export const usePipelineExecution = () => {
     setLogs((prev) => [...prev, { type, message, timestamp }]);
   }, []);
 
-  // runPipeline is creating the pipeline and adding the agents to it on the go.
+  // Execute pipeline with complete configuration in one request
   const runPipeline = useCallback(
     async (pipelineForm, agents) => {
       setIsRunning(true);
@@ -27,48 +27,17 @@ export const usePipelineExecution = () => {
       setProgress(0);
 
       try {
-        addLog(LOG_TYPES.INFO, "🚀 Creating pipeline...");
-        setProgress(5);
-
-        // Step 1: Create pipeline
-        const createResult = await apiClient.createPipeline(
-          pipelineForm.name,
-          pipelineForm.firstPrompt
-        );
+        addLog(LOG_TYPES.INFO, "🚀 Starting pipeline execution...");
+        setProgress(10);
 
         addLog(
-          LOG_TYPES.SUCCESS,
-          `✅ Pipeline created with ID: ${createResult.pipeline_id}`
+          LOG_TYPES.INFO,
+          `📋 Pipeline: ${pipelineForm.name} with ${agents.length} agent(s)`
         );
-        setProgress(20);
+        setProgress(30);
 
-        // Step 2: Add agents to pipeline
-        for (let i = 0; i < agents.length; i++) {
-          const agent = agents[i];
-          addLog(
-            LOG_TYPES.INFO,
-            `🤖 Adding agent ${i + 1}/${agents.length}: ${agent.name}...`
-          );
-
-          const agentResult = await apiClient.addAgentToPipeline(
-            createResult.pipeline_id,
-            agent
-          );
-
-          addLog(
-            LOG_TYPES.SUCCESS,
-            `✅ Agent "${agent.name}" added at position ${agentResult.agent_order}`
-          );
-          setProgress(20 + ((i + 1) / agents.length) * 60);
-        }
-
-        addLog(LOG_TYPES.INFO, "🔄 Starting pipeline execution...");
-        setProgress(85);
-
-        // Step 3: Start pipeline execution
-        const executionResult = await apiClient.startPipeline(
-          createResult.pipeline_id
-        );
+        // Execute pipeline with complete configuration
+        const executionResult = await apiClient.executePipeline(pipelineForm, agents);
 
         addLog(
           LOG_TYPES.SUCCESS,

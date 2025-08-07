@@ -20,7 +20,7 @@ func (s *Server) sendError(w http.ResponseWriter, status int, message string) {
 	s.sendJSON(w, status, ErrorResponse{Error: message})
 }
 
-// Generate simple UUID-like IDs
+// Generate simple UUID-like IDs for temporary execution sessions
 func generateID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, len(prefix)*1000+int(len(prefix)*42))
 }
