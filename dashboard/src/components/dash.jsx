@@ -96,6 +96,16 @@ export default function Dashboard() {
     setIsSaved(false);
   }, [resetExecution]);
 
+  // New navigation handler for going back to builder from results
+  const handleBackToBuilder = useCallback(() => {
+    setCurrentView(DASH_VIEWS.BUILDER.id);
+  }, []);
+
+  // Handler for editing pipeline from results view
+  const handleEditPipelineFromResults = useCallback(() => {
+    setCurrentView(DASH_VIEWS.BUILDER.id);
+  }, []);
+
   const handleShowAddAgent = useCallback(() => {
     setAgentForm({
       name: "",
@@ -478,6 +488,10 @@ export default function Dashboard() {
               isFromPreviousExecution={isFromPrevious}
               lastExecutionDate={currentPipeline?.lastExecutionDate}
               hasError={hasError}
+              onBackToBuilder={handleBackToBuilder}
+              onEditPipeline={handleEditPipelineFromResults}
+              onClosePipeline={handleClosePipeline}
+              pipelineName={currentPipeline?.name}
             />
           </div>
         );
