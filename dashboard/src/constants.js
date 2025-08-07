@@ -44,3 +44,15 @@ export const DASH_VIEWS = {
     showSidebar: false,
   },
 };
+
+export const STORAGE_KEYS = {
+  PIPELINES: "promptmesh_pipelines",
+  // Add other storage keys here as the app grows
+  // USER_PREFERENCES: "promptmesh_user_prefs",
+  // RECENT_ITEMS: "promptmesh_recent_items"
+};
+
+export const DEFAULT_VALUES = {
+  PIPELINES: [],
+  // Add other default values here
+};

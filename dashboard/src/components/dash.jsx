@@ -12,11 +12,18 @@ import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { usePipelineExecution } from "../hooks/usePipelineExecution";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { generateId, validatePipelineForm, validateAgentForm } from "../utils";
-import { PIPELINE_STATUS, DASH_VIEWS } from "../constants";
+import {
+  PIPELINE_STATUS,
+  DASH_VIEWS,
+  STORAGE_KEYS,
+  DEFAULT_VALUES,
+} from "../constants";
 
 export default function Dashboard() {
-  // Use localStorage for pipelines persistence
-  const [pipelines, setPipelines] = useLocalStorage("promptmesh_pipelines", []);
+  const [pipelines, setPipelines] = useLocalStorage(
+    STORAGE_KEYS.PIPELINES,
+    DEFAULT_VALUES.PIPELINES
+  );
   const [currentPipeline, setCurrentPipeline] = useState(null);
   const [currentView, setCurrentView] = useState(DASH_VIEWS.WELCOME.id);
   const [showModal, setShowModal] = useState(false);
@@ -26,7 +33,6 @@ export default function Dashboard() {
   const [errors, setErrors] = useState({});
   const [isSaved, setIsSaved] = useState(false);
 
-  // NEW: Add state for editing agents
   const [editingAgent, setEditingAgent] = useState(null);
   const [isEditingAgent, setIsEditingAgent] = useState(false);
 
