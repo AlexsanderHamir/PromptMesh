@@ -26,6 +26,10 @@ export default function Dashboard() {
   const [errors, setErrors] = useState({});
   const [isSaved, setIsSaved] = useState(false);
 
+  // NEW: Add state for editing agents
+  const [editingAgent, setEditingAgent] = useState(null);
+  const [isEditingAgent, setIsEditingAgent] = useState(false);
+
   const [pipelineForm, setPipelineForm] = useState({
     name: "",
     firstPrompt: "",
@@ -94,6 +98,23 @@ export default function Dashboard() {
       model: "",
       systemMsg: "",
     });
+    setEditingAgent(null);
+    setIsEditingAgent(false);
+    setErrors({});
+    setShowModal(true);
+  }, []);
+
+  // NEW: Add handler for editing an agent
+  const handleEditAgent = useCallback((agent) => {
+    setAgentForm({
+      name: agent.name,
+      role: agent.role,
+      provider: agent.provider,
+      model: agent.model || "",
+      systemMsg: agent.systemMsg,
+    });
+    setEditingAgent(agent);
+    setIsEditingAgent(true);
     setErrors({});
     setShowModal(true);
   }, []);
@@ -101,8 +122,11 @@ export default function Dashboard() {
   const handleHideAddAgent = useCallback(() => {
     setShowModal(false);
     setErrors({});
+    setEditingAgent(null);
+    setIsEditingAgent(false);
   }, []);
 
+  // UPDATED: Handle both adding and editing agents
   const handleAddAgent = useCallback(
     (e) => {
       e.preventDefault();
@@ -113,16 +137,34 @@ export default function Dashboard() {
         return;
       }
 
-      const newAgent = {
-        id: generateId(),
-        ...agentForm,
-      };
+      if (isEditingAgent && editingAgent) {
+        // Update existing agent
+        const updatedAgent = {
+          ...editingAgent,
+          ...agentForm,
+        };
 
-      setAgents((prev) => [...prev, newAgent]);
+        setAgents((prev) =>
+          prev.map((agent) =>
+            agent.id === editingAgent.id ? updatedAgent : agent
+          )
+        );
+      } else {
+        // Add new agent
+        const newAgent = {
+          id: generateId(),
+          ...agentForm,
+        };
+
+        setAgents((prev) => [...prev, newAgent]);
+      }
+
       setShowModal(false);
       setErrors({});
+      setEditingAgent(null);
+      setIsEditingAgent(false);
     },
-    [agentForm]
+    [agentForm, isEditingAgent, editingAgent]
   );
 
   const handleRemoveAgent = useCallback((id) => {
@@ -275,6 +317,7 @@ export default function Dashboard() {
               agents={agents}
               errors={errors}
               onShowAddAgent={handleShowAddAgent}
+              onEditAgent={handleEditAgent} // Pass the edit handler
               onRemoveAgent={handleRemoveAgent}
               onClosePipeline={handleClosePipeline}
             />
@@ -371,6 +414,7 @@ export default function Dashboard() {
         showModal={showModal}
         agentForm={agentForm}
         errors={errors}
+        isEditing={isEditingAgent} // Pass the editing state
         onFormChange={handleAgentFormChange}
         onSubmit={handleAddAgent}
         onClose={handleHideAddAgent}
