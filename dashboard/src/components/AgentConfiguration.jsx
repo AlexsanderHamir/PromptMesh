@@ -1,4 +1,4 @@
-import { Bot, Plus, X } from "lucide-react";
+import { Bot, Plus, X, Edit } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 
@@ -6,6 +6,7 @@ export const AgentConfiguration = ({
   agents,
   errors,
   onShowAddAgent,
+  onEditAgent,
   onRemoveAgent,
   onClosePipeline,
 }) => (
@@ -66,9 +67,18 @@ export const AgentConfiguration = ({
                 {agent.provider}
               </span>
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onEditAgent(agent)}
+                title="Edit agent"
+              >
+                <Edit className="w-3 h-3" />
+              </Button>
+              <Button
                 variant="danger"
                 size="sm"
                 onClick={() => onRemoveAgent(agent.id)}
+                title="Delete agent"
               >
                 <X className="w-3 h-3" />
               </Button>

@@ -1,4 +1,4 @@
-import { X, Plus } from "lucide-react";
+import { X, Plus, Save } from "lucide-react";
 import { Button } from "./ui/Button";
 import { FormInput, FormTextarea, FormSelect } from "./ui/FormControls";
 import { PROVIDERS } from "../constants";
@@ -7,6 +7,7 @@ export const AddAgentModal = ({
   showModal,
   agentForm,
   errors,
+  isEditing = false,
   onFormChange,
   onSubmit,
   onClose,
@@ -20,10 +21,12 @@ export const AddAgentModal = ({
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-2xl font-bold text-slate-100">
-                Add New Agent
+                {isEditing ? "Edit Agent" : "Add New Agent"}
               </h3>
               <p className="text-slate-400 text-sm mt-1">
-                Configure a specialized AI agent for your pipeline
+                {isEditing
+                  ? "Update the configuration for this AI agent"
+                  : "Configure a specialized AI agent for your pipeline"}
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -84,8 +87,17 @@ export const AddAgentModal = ({
                 Cancel
               </Button>
               <Button type="submit">
-                <Plus className="w-4 h-4" />
-                Add Agent
+                {isEditing ? (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Update Agent
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Add Agent
+                  </>
+                )}
               </Button>
             </div>
           </form>
