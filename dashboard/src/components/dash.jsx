@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { WelcomeScreen } from "./WelcomeScreen";
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [pipelineToDelete, setPipelineToDelete] = useState(null);
   const [agents, setAgents] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isSaved, setIsSaved] = useState(false);
 
   const [pipelineForm, setPipelineForm] = useState({
     name: "",
@@ -48,6 +49,22 @@ export default function Dashboard() {
     return Object.keys(validationErrors).length === 0;
   }, [pipelineForm, agents]);
 
+  // Check if current state matches saved pipeline
+  const hasUnsavedChanges = useMemo(() => {
+    if (!currentPipeline) return true; // New pipeline always has "unsaved changes"
+
+    return (
+      currentPipeline.name !== pipelineForm.name ||
+      currentPipeline.firstPrompt !== pipelineForm.firstPrompt ||
+      JSON.stringify(currentPipeline.agents) !== JSON.stringify(agents)
+    );
+  }, [currentPipeline, pipelineForm, agents]);
+
+  // Update isSaved status when changes occur
+  useEffect(() => {
+    setIsSaved(!hasUnsavedChanges && currentPipeline !== null);
+  }, [hasUnsavedChanges, currentPipeline]);
+
   // Event handlers
   const handleCreateNewPipeline = useCallback(() => {
     setCurrentView("builder");
@@ -56,6 +73,17 @@ export default function Dashboard() {
     setAgents([]);
     resetExecution();
     setErrors({});
+    setIsSaved(false);
+  }, [resetExecution]);
+
+  const handleClosePipeline = useCallback(() => {
+    setCurrentView("welcome");
+    setCurrentPipeline(null);
+    setPipelineForm({ name: "", firstPrompt: "" });
+    setAgents([]);
+    resetExecution();
+    setErrors({});
+    setIsSaved(false);
   }, [resetExecution]);
 
   const handleShowAddAgent = useCallback(() => {
@@ -131,6 +159,7 @@ export default function Dashboard() {
 
     setCurrentPipeline(pipeline);
     setErrors({});
+    setIsSaved(true);
 
     // Show success message (you could add a toast notification here)
     console.log("Pipeline saved successfully!");
@@ -145,12 +174,7 @@ export default function Dashboard() {
     }
 
     // Save pipeline before running if not already saved
-    if (
-      !currentPipeline ||
-      currentPipeline.name !== pipelineForm.name ||
-      currentPipeline.firstPrompt !== pipelineForm.firstPrompt ||
-      JSON.stringify(currentPipeline.agents) !== JSON.stringify(agents)
-    ) {
+    if (!isSaved) {
       handleSavePipeline();
     }
 
@@ -158,7 +182,7 @@ export default function Dashboard() {
     setErrors({});
 
     await runPipeline(pipelineForm, agents);
-  }, [pipelineForm, agents, runPipeline, currentPipeline, handleSavePipeline]);
+  }, [pipelineForm, agents, runPipeline, isSaved, handleSavePipeline]);
 
   const handleSelectPipeline = useCallback((pipeline) => {
     setCurrentPipeline(pipeline);
@@ -166,9 +190,10 @@ export default function Dashboard() {
       name: pipeline.name,
       firstPrompt: pipeline.firstPrompt,
     });
-    setAgents(pipeline.agents);
+    setAgents(pipeline.agents || []); // Ensure agents is always an array
     setCurrentView("builder");
     setErrors({});
+    setIsSaved(true); // Pipeline is saved when selected from list
   }, []);
 
   const handleDeletePipeline = useCallback(
@@ -193,6 +218,7 @@ export default function Dashboard() {
         setPipelineForm({ name: "", firstPrompt: "" });
         setAgents([]);
         resetExecution();
+        setIsSaved(false);
       }
 
       setShowDeleteDialog(false);
@@ -249,8 +275,10 @@ export default function Dashboard() {
             <PipelineActions
               isRunning={isRunning}
               isFormValid={isFormValid}
+              isSaved={isSaved}
               onRunPipeline={handleRunPipeline}
               onSavePipeline={handleSavePipeline}
+              onClosePipeline={handleClosePipeline}
             />
           </div>
         );
@@ -277,8 +305,11 @@ export default function Dashboard() {
           subtitle: null,
         };
       case "builder":
+        const title = currentPipeline ? currentPipeline.name : "New Pipeline";
+        const unsavedIndicator =
+          hasUnsavedChanges && currentPipeline ? " (Unsaved Changes)" : "";
         return {
-          title: currentPipeline ? currentPipeline.name : "New Pipeline",
+          title: title + unsavedIndicator,
           subtitle:
             "Configure your AI agent pipeline with custom prompts and specialized agents",
         };
