@@ -5,6 +5,18 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    global: "globalThis",
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          pdfjs: ["pdfjs-dist"],
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {
