@@ -9,6 +9,7 @@ export const PipelineConfiguration = ({
   pipelineForm,
   onFormChange,
   errors,
+  onFilesChange,
 }) => {
   const {
     uploadedFiles,
@@ -19,6 +20,13 @@ export const PipelineConfiguration = ({
     clearFiles,
     getFormattedContent,
   } = useFileUpload();
+
+  // Notify parent component when files change
+  useEffect(() => {
+    if (onFilesChange) {
+      onFilesChange(uploadedFiles);
+    }
+  }, [uploadedFiles, onFilesChange]);
 
   // Keep track of the original prompt (without file content)
   const originalPromptRef = useRef(pipelineForm.firstPrompt);

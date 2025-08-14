@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // IndexedDB configuration
 const DB_NAME = "PromptMeshDB";
@@ -67,57 +67,70 @@ export const useIndexedDB = (key, initialValue) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load initial value from IndexedDB
+  // Use ref to store the initial value and prevent infinite loops
+  const initialValueRef = useRef(initialValue);
+  const hasLoadedRef = useRef(false);
+
+  // Load initial value from IndexedDB only once
   useEffect(() => {
+    // Only load if we haven't loaded yet
+    if (hasLoadedRef.current) return;
+
     const loadValue = async () => {
       try {
         setIsLoading(true);
         setError(null);
         const item = await getFromDB(key);
-        setStoredValue(item !== null ? item : initialValue);
+        setStoredValue(item !== null ? item : initialValueRef.current);
+        hasLoadedRef.current = true;
       } catch (err) {
         console.error(`Error reading IndexedDB key "${key}":`, err);
         setError(err);
-        setStoredValue(initialValue);
+        setStoredValue(initialValueRef.current);
+        hasLoadedRef.current = true;
       } finally {
         setIsLoading(false);
       }
     };
 
     loadValue();
-  }, [key, initialValue]);
+  }, [key]); // Remove initialValue from dependencies
 
   // Update IndexedDB when state changes
-  const setValue = useCallback(async (value) => {
-    try {
-      setError(null);
-      // Allow value to be a function so we have the same API as useState
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
+  const setValue = useCallback(
+    async (value) => {
+      try {
+        setError(null);
+        // Allow value to be a function so we have the same API as useState
+        const valueToStore =
+          value instanceof Function ? value(storedValue) : value;
+        setStoredValue(valueToStore);
 
-      // Save to IndexedDB
-      if (valueToStore === undefined) {
-        await removeFromDB(key);
-      } else {
-        await setInDB(key, valueToStore);
+        // Save to IndexedDB
+        if (valueToStore === undefined) {
+          await removeFromDB(key);
+        } else {
+          await setInDB(key, valueToStore);
+        }
+      } catch (err) {
+        console.error(`Error setting IndexedDB key "${key}":`, err);
+        setError(err);
       }
-    } catch (err) {
-      console.error(`Error setting IndexedDB key "${key}":`, err);
-      setError(err);
-    }
-  }, [key, storedValue]);
+    },
+    [key, storedValue]
+  );
 
   // Remove from IndexedDB
   const removeValue = useCallback(async () => {
     try {
       setError(null);
       await removeFromDB(key);
-      setStoredValue(initialValue);
+      setStoredValue(initialValueRef.current);
     } catch (err) {
       console.error(`Error removing IndexedDB key "${key}":`, err);
       setError(err);
     }
-  }, [key, initialValue]);
+  }, [key]);
 
   return [storedValue, setValue, removeValue, isLoading, error];
 };

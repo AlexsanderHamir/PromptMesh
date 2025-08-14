@@ -6,6 +6,7 @@ import {
   X,
   Check,
   Eye,
+  Zap,
 } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
@@ -18,9 +19,13 @@ export const PipelineActions = ({
   hasLastExecution,
   lastExecutionDate,
   onRunPipeline,
+  onRunPipelineStream,
   onSavePipeline,
   onViewResults,
   onClosePipeline,
+  onClearResults,
+  useStreaming = true,
+  onToggleStreaming,
 }) => (
   <Card
     title="Pipeline Actions"
@@ -30,7 +35,7 @@ export const PipelineActions = ({
     <div className="flex gap-4 flex-wrap">
       <Button
         variant="success"
-        onClick={onRunPipeline}
+        onClick={useStreaming ? onRunPipelineStream : onRunPipeline}
         disabled={isRunning || !isFormValid}
       >
         <Play className="w-4 h-4" />
@@ -53,10 +58,37 @@ export const PipelineActions = ({
         </Button>
       )}
 
+      {hasLastExecution && (
+        <Button variant="ghost" onClick={onClearResults}>
+          <X className="w-4 h-4" />
+          Clear Results
+        </Button>
+      )}
+
       <Button variant="ghost" onClick={onClosePipeline}>
         <X className="w-4 h-4" />
         Close
       </Button>
+    </div>
+
+    {/* Streaming Toggle */}
+    <div className="mt-4 flex items-center gap-3">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onToggleStreaming}
+        className={`flex items-center gap-2 ${
+          useStreaming ? "text-blue-400" : "text-slate-400"
+        }`}
+      >
+        <Zap className="w-4 h-4" />
+        {useStreaming ? "Streaming Enabled" : "Streaming Disabled"}
+      </Button>
+      <span className="text-xs text-slate-500">
+        {useStreaming
+          ? "Real-time updates from each agent"
+          : "Traditional execution (wait for completion)"}
+      </span>
     </div>
 
     {!isFormValid && (
