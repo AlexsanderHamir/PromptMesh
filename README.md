@@ -70,7 +70,7 @@ PromptMesh/
 ## Development
 
 * **Frontend:** `cd dashboard && npm install && npm run dev`
-* **Backend:** `go run main.go`
+* **Backend:** `go mod tidy && go run main.go`
 * **Tests:** `go test ./...` (backend), `npm test` (frontend)
 
 ## Contributing
