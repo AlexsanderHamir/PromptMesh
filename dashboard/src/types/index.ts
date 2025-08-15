@@ -96,6 +96,7 @@ export interface PipelineContextActions {
   setUploadedFiles: (files: File[]) => void;
   toggleStreaming: () => void;
   resetExecution: () => void;
+  clearExecutionState: () => void;
 }
 
 export interface PipelineContextValue extends PipelineContextState, PipelineContextActions {}

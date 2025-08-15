@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useMemo, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, useCallback } from 'react';
 import { usePipelineManagement } from '../hooks/usePipelineManagement';
 import { useAgentManagement } from '../hooks/useAgentManagement';
 import { useExecutionManagement } from '../hooks/useExecutionManagement';
-import { Pipeline, PipelineForm, Agent, PipelineStatus, DashViews, ExecutionState, PipelineContextValue } from '../types';
+import { Pipeline, PipelineForm, Agent, DashViews, ExecutionState, PipelineContextValue } from '../types';
 
 interface PipelineProviderProps {
   children: React.ReactNode;
@@ -29,12 +29,8 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
     pipelineManagement.setCurrentView(view);
   }, [pipelineManagement]);
 
-  // Set up automatic result saving
-  useEffect(() => {
-    executionManagement.setResultSaveCallback((results) => {
-      pipelineManagement.updateExecutionResults(results);
-    });
-  }, [executionManagement, pipelineManagement]);
+  // Note: Result saving is now handled directly in the execution management hooks
+  // No need for the callback setup that was causing infinite loops
 
   // Create the context value with useMemo but only depend on primitive values
   const contextValue = useMemo((): PipelineContextValue => {
@@ -67,8 +63,8 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
       closePipeline: () => pipelineManagement.closePipeline(),
       savePipeline: () => pipelineManagement.savePipeline(),
       deletePipeline: (pipelineId: string) => pipelineManagement.deletePipeline(pipelineId),
-      resetPipelineStatus: (pipelineId: string) => pipelineManagement.resetPipelineStatus(pipelineId),
-      clearResults: () => pipelineManagement.clearResults(),
+      resetPipelineStatus: (pipelineId: string) => pipelineManagement.resetPipelineStatus(pipelineId, () => executionManagement.clearExecutionState()),
+      clearResults: () => pipelineManagement.clearResults(() => executionManagement.clearExecutionState()),
       runPipeline: async () => {
         try {
           await executionManagement.executePipeline(
@@ -77,21 +73,17 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
             () => {
               // Status update handled silently
             },
-            pipelineManagement.setCurrentView
+            pipelineManagement.setCurrentView,
+            (results) => {
+              // Save results directly to pipeline management
+              pipelineManagement.updateExecutionResults(results);
+            }
           );
-          
-          // Results are now automatically saved via the callback
-          // No need to manually save here
           
         } catch (error) {
           console.error('Pipeline execution failed:', error);
           
-          // Save error results
-          pipelineManagement.updateExecutionResults({
-            status: PipelineStatus.ERROR,
-            lastExecutionDate: new Date().toISOString(),
-            lastExecutionError: error instanceof Error ? error.message : 'Unknown error occurred',
-          });
+          // Error results are now handled in the executePipeline function
         }
       },
       updatePipelineForm: (field: keyof PipelineForm, value: string) => pipelineManagement.updatePipelineForm(field, value),
@@ -120,6 +112,7 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
       },
       toggleStreaming: () => executionManagement.toggleStreaming(),
       resetExecution: () => executionManagement.resetExecution(),
+      clearExecutionState: () => executionManagement.clearExecutionState(),
     };
   }, [
     // Only depend on primitive values, not objects

@@ -50,7 +50,6 @@ export const ViewerView: React.FC = () => {
             lastExecutionDate={new Date().toISOString()}
             hasError={isCurrentError}
             onEditPipeline={() => {
-              alert('Edit Pipeline button clicked!');
               setCurrentView(DashViews.BUILDER);
             }}
             onClosePipeline={closePipeline}

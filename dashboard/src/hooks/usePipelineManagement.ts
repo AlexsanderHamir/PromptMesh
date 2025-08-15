@@ -154,7 +154,7 @@ export const usePipelineManagement = () => {
     }
   }, [currentPipeline, resetPipelineForm, typedSetPipelines, setCurrentView]);
 
-  const resetPipelineStatus = useCallback((pipelineId: string) => {
+  const resetPipelineStatus = useCallback((pipelineId: string, onExecutionStateClear?: () => void) => {
     typedSetPipelines((prev: readonly Pipeline[]) => {
       const updated = prev.map((pipeline: Pipeline) =>
         pipeline.id === pipelineId
@@ -170,9 +170,26 @@ export const usePipelineManagement = () => {
       );
       return updated;
     });
-  }, [typedSetPipelines]);
 
-  const clearResults = useCallback(() => {
+    // If the current pipeline is being reset, also clear the current pipeline state
+    if (currentPipeline?.id === pipelineId) {
+      setCurrentPipeline(prev => prev ? {
+        ...prev,
+        status: PipelineStatus.IDLE,
+        lastExecutionResult: undefined,
+        lastExecutionError: undefined,
+        lastExecutionLogs: undefined,
+        lastExecutionDate: undefined,
+      } : null);
+      
+      // Clear execution state if callback is provided
+      if (onExecutionStateClear) {
+        onExecutionStateClear();
+      }
+    }
+  }, [typedSetPipelines, currentPipeline]);
+
+  const clearResults = useCallback((onExecutionStateClear?: () => void) => {
     if (currentPipeline) {
       const clearedPipeline: Pipeline = {
         ...currentPipeline,
@@ -187,6 +204,11 @@ export const usePipelineManagement = () => {
         return updated;
       });
       setCurrentPipeline(clearedPipeline);
+      
+      // Clear execution state if callback is provided
+      if (onExecutionStateClear) {
+        onExecutionStateClear();
+      }
     }
   }, [currentPipeline, typedSetPipelines]);
 

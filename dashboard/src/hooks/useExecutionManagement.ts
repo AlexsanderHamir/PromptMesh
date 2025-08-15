@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { usePipelineExecution } from './usePipelineExecution';
 import { PipelineForm, Agent, PipelineStatus, DashViews, LogEntry } from '../types';
 
@@ -53,51 +53,8 @@ export const useExecutionManagement = () => {
     return convertedFiles;
   }, []);
 
-  // Auto-save results when they become available
-  const [onResultSave, setOnResultSave] = useState<((results: {
-    status: PipelineStatus;
-    lastExecutionDate: string;
-    lastExecutionLogs?: LogEntry[];
-    lastExecutionResult?: string;
-    lastExecutionError?: string;
-  }) => void) | null>(null);
-
-  // Set the callback for saving results
-  const setResultSaveCallback = useCallback((callback: (results: {
-    status: PipelineStatus;
-    lastExecutionDate: string;
-    lastExecutionLogs?: LogEntry[];
-    lastExecutionResult?: string;
-    lastExecutionError?: string;
-  }) => void) => {
-    setOnResultSave(() => callback);
-  }, []);
-
-  // Auto-save results when they become available
-  useEffect(() => {
-    if (onResultSave && !isRunning && (result || logs.length > 0)) {
-      // Determine if there was an error
-      const hasError = result === '' && logs.length > 0 && logs.some(log => log.level === 'error');
-      
-      if (hasError) {
-        // Save error results
-        onResultSave({
-          status: PipelineStatus.ERROR,
-          lastExecutionDate: new Date().toISOString(),
-          lastExecutionLogs: logs,
-          lastExecutionError: 'Pipeline execution failed - see logs for details',
-        });
-      } else if (result && result.trim()) {
-        // Save successful results
-        onResultSave({
-          status: PipelineStatus.COMPLETED,
-          lastExecutionDate: new Date().toISOString(),
-          lastExecutionLogs: logs,
-          lastExecutionResult: result,
-        });
-      }
-    }
-  }, [onResultSave, isRunning, result, logs]);
+  // Note: Result saving is now handled directly in the pipeline execution functions
+  // This removes the callback system that was causing infinite loops
 
   const toggleStreaming = useCallback(() => {
     setUseStreaming(prev => !prev);
@@ -107,7 +64,14 @@ export const useExecutionManagement = () => {
     pipelineForm: PipelineForm,
     agents: Agent[],
     onStatusUpdate: (status: PipelineStatus, error?: string) => void,
-    setCurrentView?: (view: DashViews) => void
+    setCurrentView?: (view: DashViews) => void,
+    onResultSave?: (results: {
+      status: PipelineStatus;
+      lastExecutionDate: string;
+      lastExecutionLogs?: LogEntry[];
+      lastExecutionResult?: string;
+      lastExecutionError?: string;
+    }) => void
   ) => {
     try {
       onStatusUpdate(PipelineStatus.RUNNING);
@@ -125,17 +89,43 @@ export const useExecutionManagement = () => {
         : await runPipeline(pipelineForm, agents);
 
       onStatusUpdate(PipelineStatus.COMPLETED);
+      
+      // Save successful results if callback is provided
+      if (onResultSave && result && result.trim()) {
+        onResultSave({
+          status: PipelineStatus.COMPLETED,
+          lastExecutionDate: new Date().toISOString(),
+          lastExecutionLogs: logs,
+          lastExecutionResult: result,
+        });
+      }
+      
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       onStatusUpdate(PipelineStatus.ERROR, errorMessage);
+      
+      // Save error results if callback is provided
+      if (onResultSave) {
+        onResultSave({
+          status: PipelineStatus.ERROR,
+          lastExecutionDate: new Date().toISOString(),
+          lastExecutionLogs: logs,
+          lastExecutionError: errorMessage,
+        });
+      }
+      
       throw error;
     }
-  }, [useStreaming, runPipelineStream, runPipeline, uploadedFiles, convertFilesForAPI]);
+  }, [useStreaming, runPipelineStream, runPipeline, uploadedFiles, convertFilesForAPI, logs]);
 
   const clearExecutionData = useCallback(() => {
     resetExecution();
     setUploadedFiles([]);
+  }, [resetExecution]);
+
+  const clearExecutionState = useCallback(() => {
+    resetExecution();
   }, [resetExecution]);
 
   return {
@@ -154,7 +144,7 @@ export const useExecutionManagement = () => {
     toggleStreaming,
     setUploadedFiles,
     clearExecutionData,
+    clearExecutionState,
     resetExecution,
-    setResultSaveCallback,
   };
 };
