@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/AlexsanderHamir/PromptMesh/shared"
+	"github.com/google/uuid"
 )
 
 // Utility functions
@@ -20,9 +21,9 @@ func (s *Server) sendError(w http.ResponseWriter, status int, message string) {
 	s.sendJSON(w, status, ErrorResponse{Error: message})
 }
 
-// Generate simple UUID-like IDs for temporary execution sessions
+// Generate unique IDs for temporary execution sessions
 func generateID(prefix string) string {
-	return fmt.Sprintf("%s-%d", prefix, len(prefix)*1000+int(len(prefix)*42))
+	return fmt.Sprintf("%s-%s", prefix, uuid.NewString())
 }
 
 // Helper function to get list of supported providers

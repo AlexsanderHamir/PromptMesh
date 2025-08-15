@@ -50,9 +50,12 @@ PromptMesh uses a **stateless server architecture** where:
    # Required for AI providers (choose the ones you need)
    export OPENAI_API_KEY="your-openai-key"
    export ANTHROPIC_API_KEY="your-anthropic-key"
-   export GOOGLEAI_API_KEY="your-google-key"
+   export GOOGLE_API_KEY="your-google-key"
    export COHERE_API_KEY="your-cohere-key"
-   export HUGGINGFACE_API_KEY="your-huggingface-key"
+   export HUGGINGFACEHUB_API_TOKEN="your-huggingface-key"
+
+   # Frontend (production) API URL for Vite build
+   export VITE_API_URL="https://your-api.example.com"
    ```
 
 3. **Start the backend server**
@@ -100,11 +103,10 @@ All pipeline configurations are stored locally in your browser's IndexedDB:
 
 ## API Reference
 
-The server provides three main endpoints for pipeline execution:
+The server provides two endpoints for pipeline execution:
 
-- `POST /pipelines/create` - Create temporary execution session
-- `POST /pipelines/add-agent` - Add agent to execution session
-- `POST /pipelines/start` - Execute pipeline and return results
+- `POST /pipelines/execute` - Execute a pipeline and return the final result
+- `POST /pipelines/execute/stream` - Execute with Server-Sent Events (SSE) updates
 
 See [API Documentation](dashboard/src/api/api.md) for detailed endpoint specifications.
 
@@ -157,8 +159,5 @@ npm test
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support and questions, please open an issue on GitHub or contact the maintainers.
+PromptMesh is licensed under the [GNU AGPL-3.0](LICENSE).
+Copyright (C) 2025 Alexsander Hamir.

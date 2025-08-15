@@ -1,4 +1,11 @@
-import { Info, CheckCircle, AlertCircle, Bot, ArrowRight, Eye } from "lucide-react";
+import {
+  Info,
+  CheckCircle,
+  AlertCircle,
+  Bot,
+  ArrowRight,
+  Eye,
+} from "lucide-react";
 import { LOG_TYPES } from "../../constants";
 
 export const LogEntry = ({ log, index, onAgentOutputClick }) => {
@@ -26,10 +33,19 @@ export const LogEntry = ({ log, index, onAgentOutputClick }) => {
   const renderMetadata = () => {
     if (!log.metadata) return null;
 
-    const { agent, role, type, inputLength, outputLength, isLast, fromAgent, toAgent } = log.metadata;
+    const {
+      agent,
+      role,
+      type,
+      inputLength,
+      outputLength,
+      isLast,
+      fromAgent,
+      toAgent,
+    } = log.metadata;
 
     switch (type) {
-      case 'agent_start':
+      case "agent_start":
         return (
           <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20">
             <div className="flex items-center gap-2 text-xs text-blue-300">
@@ -40,7 +56,7 @@ export const LogEntry = ({ log, index, onAgentOutputClick }) => {
           </div>
         );
 
-      case 'agent_processing':
+      case "agent_processing":
         return (
           <div className="mt-2 p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
             <div className="flex items-center gap-2 text-xs text-yellow-300">
@@ -53,7 +69,7 @@ export const LogEntry = ({ log, index, onAgentOutputClick }) => {
           </div>
         );
 
-      case 'agent_completed':
+      case "agent_completed":
         return (
           <div className="mt-2 p-2 bg-green-500/10 rounded border border-green-500/20">
             <div className="flex items-center justify-between text-xs text-green-300">
@@ -61,16 +77,19 @@ export const LogEntry = ({ log, index, onAgentOutputClick }) => {
                 <Bot className="w-3 h-3" />
                 <span className="font-medium">{agent}</span>
                 <span className="text-green-400">
-                  Completed ({outputLength} chars) {isLast ? "(Final Agent)" : ""}
+                  Completed ({outputLength} chars){" "}
+                  {isLast ? "(Final Agent)" : ""}
                 </span>
               </div>
               {onAgentOutputClick && (
                 <button
-                  onClick={() => onAgentOutputClick(
-                    agent, 
-                    log.agentOutput || "No output available",
-                    log.agentInput || "No input available"
-                  )}
+                  onClick={() =>
+                    onAgentOutputClick(
+                      agent,
+                      log.metadata?.agentOutput || "No output available",
+                      log.metadata?.agentInput || "No input available"
+                    )
+                  }
                   className="flex items-center gap-1 px-2 py-1 bg-green-500/20 hover:bg-green-500/30 rounded text-green-300 hover:text-green-200 transition-colors"
                   title="View agent input/output"
                 >
@@ -82,7 +101,7 @@ export const LogEntry = ({ log, index, onAgentOutputClick }) => {
           </div>
         );
 
-      case 'agent_handoff':
+      case "agent_handoff":
         return (
           <div className="mt-2 p-2 bg-purple-500/10 rounded border border-purple-500/20">
             <div className="flex items-center gap-2 text-xs text-purple-300">

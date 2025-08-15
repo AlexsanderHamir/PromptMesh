@@ -41,7 +41,7 @@ export const usePipelineExecution = () => {
         setProgress(20);
 
         // Execute pipeline with streaming updates
-        await apiClient.executePipelineStream(
+        const streamResult = await apiClient.executePipelineStream(
           pipelineForm,
           agents,
           uploadedFiles,
@@ -72,33 +72,33 @@ export const usePipelineExecution = () => {
                 break;
 
               case "agent_processing":
-                setAgentProgress(prev => ({
+                setAgentProgress((prev) => ({
                   ...prev,
-                  [data.agent_name]: { status: 'processing', progress: 50 }
+                  [data.agent_name]: { status: "processing", progress: 50 },
                 }));
                 addLog(LOG_TYPES.INFO, data.message, {
                   agent: data.agent_name,
                   role: data.agent_role,
-                  type: 'agent_processing',
+                  type: "agent_processing",
                   inputLength: data.input_length,
-                  agentInput: data.agent_input // Capture the actual input
+                  agentInput: data.agent_input, // Capture the actual input
                 });
                 break;
 
               case "agent_completed":
-                setAgentProgress(prev => ({
+                setAgentProgress((prev) => ({
                   ...prev,
-                  [data.agent_name]: { status: 'completed', progress: 100 }
+                  [data.agent_name]: { status: "completed", progress: 100 },
                 }));
                 addLog(LOG_TYPES.SUCCESS, data.message, {
                   agent: data.agent_name,
                   role: data.agent_role,
-                  type: 'agent_completed',
+                  type: "agent_completed",
                   outputLength: data.output_length,
                   isLast: data.is_last,
-                  agentOutput: data.agent_output // Capture the actual output
+                  agentOutput: data.agent_output, // Capture the actual output
                 });
-                
+
                 if (data.is_last) {
                   setCurrentAgent(null);
                 }
@@ -139,7 +139,13 @@ export const usePipelineExecution = () => {
           }
         );
 
-        // Return the result so it can be saved to the pipeline
+        // Prefer the result returned by the streaming API if available
+        if (streamResult) {
+          setResult(streamResult);
+          return streamResult;
+        }
+
+        // Fallback to whatever is in state
         return result;
       } catch (error) {
         addLog(

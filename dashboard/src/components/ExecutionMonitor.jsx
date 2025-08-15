@@ -214,6 +214,7 @@ export const ExecutionMonitor = ({
         onClose={closeOutputModal}
         agentName={selectedAgentOutput?.agentName}
         agentOutput={selectedAgentOutput?.agentOutput}
+        agentInput={selectedAgentOutput?.agentInput}
       />
     </>
   );

@@ -1,7 +1,6 @@
-const API_BASE_URL =
-  process.env.NODE_ENV === "development"
-    ? "/api"
-    : process.env.REACT_APP_API_URL || "http://localhost:8080";
+const API_BASE_URL = import.meta.env.DEV
+  ? "/api"
+  : import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 class ApiClient {
   async request(endpoint, options = {}) {
@@ -167,40 +166,62 @@ class ApiClient {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
+      let buffer = "";
+      let finalResult = "";
+
       while (true) {
         const { done, value } = await reader.read();
+        if (done) break;
 
-        if (done) {
-          break;
-        }
+        buffer += decoder.decode(value, { stream: true });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        // Events are separated by double newlines per SSE spec
+        const events = buffer.split("\n\n");
+        // Keep the last partial event (if any) in the buffer
+        buffer = events.pop() || "";
 
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            const eventType = line.substring(7);
-            const nextLine = lines[lines.indexOf(line) + 1];
+        for (const rawEvent of events) {
+          const lines = rawEvent.split("\n");
+          let eventType = "message";
+          let dataLine = null;
 
-            if (nextLine && nextLine.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(nextLine.substring(6));
-                onUpdate(eventType, data);
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              dataLine = (dataLine ? dataLine + "\n" : "") + line.slice(6);
+            }
+          }
 
-                // If this is the end event, we're done
-                if (eventType === "end") {
-                  return;
-                }
-              } catch (error) {
-                console.error("Error parsing SSE data:", error);
-              }
+          let parsedData = null;
+          if (dataLine) {
+            try {
+              parsedData = JSON.parse(dataLine);
+            } catch (err) {
+              console.error("Error parsing SSE data:", err, dataLine);
+            }
+          }
+
+          if (parsedData) {
+            onUpdate && onUpdate(eventType, parsedData);
+            if (
+              eventType === "status" &&
+              parsedData.type === "pipeline_completed"
+            ) {
+              finalResult = parsedData.result || finalResult;
+            }
+            if (eventType === "end") {
+              return finalResult;
             }
           }
         }
       }
+
+      return finalResult;
     } catch (error) {
       console.error("Streaming pipeline execution failed:", error);
-      onUpdate("error", { message: error.message });
+      onUpdate && onUpdate("error", { message: error.message });
+      throw error;
     }
   }
 }

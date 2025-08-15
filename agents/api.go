@@ -2,8 +2,10 @@ package agents
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/AlexsanderHamir/PromptMesh/shared"
 	"github.com/tmc/langchaingo/llms"
@@ -93,6 +95,23 @@ func NewAgent(name, role, systemMsg, provider, envVar, model string) (*Agent, er
 	}, nil
 }
 
+// validatePrompt performs comprehensive validation of system message and input
+func (a *Agent) validatePrompt(prompt string) error {
+	if prompt == "" {
+		return errors.New("prompt cannot be empty")
+	}
+
+	if strings.TrimSpace(prompt) == "" {
+		return errors.New("prompt cannot be only whitespace")
+	}
+
+	if len(strings.TrimSpace(prompt)) < 1 {
+		return errors.New("input must be at least 1 character long")
+	}
+
+	return nil
+}
+
 func (a *Agent) Handle(input string) (string, error) {
 	if a.Verbose {
 		fmt.Printf("[%s]: Received input: %s\n", a.Name, input)
@@ -101,6 +120,10 @@ func (a *Agent) Handle(input string) (string, error) {
 	ctx := context.Background()
 
 	prompt := a.SystemMsg + "\n" + input
+	if err := a.validatePrompt(prompt); err != nil {
+		return "", fmt.Errorf("[%s] prompt validation failed: %w", a.Name, err)
+	}
+
 	resp, err := llms.GenerateFromSinglePrompt(ctx, a.LLM, prompt)
 	if err != nil {
 		return "", fmt.Errorf("[%s] LLM error: %w", a.Name, err)

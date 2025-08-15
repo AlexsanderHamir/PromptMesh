@@ -1,11 +1,9 @@
-import { Plus, Zap, Workflow } from "lucide-react";
+import { Plus, Zap } from "lucide-react";
 import { Button } from "./ui/Button";
 
 export const WelcomeScreen = ({
   onCreateNewPipeline,
-  onCreateNewWorkflow,
   hasExistingPipelines = false,
-  hasExistingWorkflows = false,
   isLoading = false,
 }) => (
   <div className="flex-1 flex items-center justify-center p-8">
@@ -22,9 +20,9 @@ export const WelcomeScreen = ({
 
       <div className="mb-6">
         <p className="text-slate-400 mb-8 leading-relaxed">
-          Create and orchestrate powerful AI agent pipelines and workflows.
-          Chain together specialized agents to process complex workflows and
-          deliver sophisticated results.
+          Create and orchestrate powerful AI agent pipelines. Chain together
+          specialized agents to process complex tasks and deliver sophisticated
+          results.
         </p>
       </div>
 
@@ -36,20 +34,6 @@ export const WelcomeScreen = ({
             : hasExistingPipelines
             ? "New Pipeline"
             : "First Pipeline"}
-        </Button>
-
-        <Button
-          size="lg"
-          variant="secondary"
-          onClick={onCreateNewWorkflow}
-          disabled={isLoading}
-        >
-          <Workflow className="w-5 h-5" />
-          {isLoading
-            ? "Loading..."
-            : hasExistingWorkflows
-            ? "New Workflow"
-            : "First Workflow"}
         </Button>
       </div>
     </div>

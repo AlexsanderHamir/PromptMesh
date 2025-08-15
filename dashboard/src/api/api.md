@@ -16,7 +16,7 @@ graph TD
 ## Base URL
 
 - **Development**: `/api` (proxied through Vite)
-- **Production**: `REACT_APP_API_URL` environment variable
+- **Production**: `VITE_API_URL` environment variable
 - **Fallback**: `http://localhost:8080`
 
 ## Endpoints
@@ -65,7 +65,7 @@ graph TD
 | Environment | API Base URL     | Configuration Method |
 | ----------- | ---------------- | -------------------- |
 | Development | `/api`           | Vite proxy           |
-| Production  | Custom URL       | `REACT_APP_API_URL`  |
+| Production  | Custom URL       | `VITE_API_URL`       |
 | Fallback    | `localhost:8080` | Hardcoded default    |
 
 ## Stateless Design Benefits
