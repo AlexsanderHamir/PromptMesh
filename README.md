@@ -2,6 +2,8 @@
 
 A modern AI agent pipeline platform with a **stateless server** and **client-side configuration**.
 
+![PromptMesh Dashboard](home_page.jpg)
+
 ## Architecture
 
 * **Frontend (React + IndexedDB)** – Stores pipeline configs, agent settings, and user data.
