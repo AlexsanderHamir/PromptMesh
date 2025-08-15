@@ -24,9 +24,12 @@ export const useExecutionManagement = () => {
     progress,
     currentAgent,
     agentProgress,
+    totalAgents,
+    completedAgents,
     runPipeline,
     runPipelineStream,
     resetExecution,
+    restoreExecutionState,
   } = usePipelineExecution();
 
   // Convert File[] to UploadedFile[] for API calls
@@ -136,6 +139,8 @@ export const useExecutionManagement = () => {
     progress,
     currentAgent,
     agentProgress,
+    totalAgents,
+    completedAgents,
     uploadedFiles,
     useStreaming,
     
@@ -146,5 +151,6 @@ export const useExecutionManagement = () => {
     clearExecutionData,
     clearExecutionState,
     resetExecution,
+    restoreExecutionState,
   };
 };

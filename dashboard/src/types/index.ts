@@ -57,6 +57,8 @@ export interface ExecutionState {
   progress: number;
   currentAgent: string | null;
   agentProgress: number;
+  totalAgents: number;
+  completedAgents: number;
 }
 
 export interface PipelineContextState {
@@ -97,6 +99,14 @@ export interface PipelineContextActions {
   toggleStreaming: () => void;
   resetExecution: () => void;
   clearExecutionState: () => void;
+  restoreExecutionState: (pipeline: Pipeline) => {
+    hasResults: boolean;
+    lastExecutionResult?: string;
+    lastExecutionError?: string;
+    lastExecutionLogs?: LogEntry[];
+    lastExecutionDate?: string;
+    status: PipelineStatus;
+  };
 }
 
 export interface PipelineContextValue extends PipelineContextState, PipelineContextActions {}

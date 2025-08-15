@@ -123,10 +123,6 @@ export const PipelineResults: React.FC<PipelineResultsProps> = ({
           )}
         </div>
         <div className="flex items-center gap-3">
-          {/* Debug info */}
-          <div className="text-xs text-slate-500">
-            onEditPipeline: {onEditPipeline ? 'defined' : 'undefined'}
-          </div>
           {onEditPipeline && (
             <Button 
               variant="secondary" 

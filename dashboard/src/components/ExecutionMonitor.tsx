@@ -30,6 +30,8 @@ interface ExecutionMonitorProps {
   currentAgent: string | null;
   agentProgress: Record<string, AgentProgress>;
   isStreaming?: boolean;
+  totalAgents?: number;
+  completedAgents?: number;
 }
 
 export const ExecutionMonitor: React.FC<ExecutionMonitorProps> = ({
@@ -38,6 +40,8 @@ export const ExecutionMonitor: React.FC<ExecutionMonitorProps> = ({
   currentAgent,
   agentProgress,
   isStreaming = true,
+  totalAgents = 0,
+  completedAgents = 0,
 }) => {
   const [selectedAgentOutput, setSelectedAgentOutput] = useState<AgentOutputData | null>(null);
   const [isOutputModalOpen, setIsOutputModalOpen] = useState(false);
@@ -102,7 +106,11 @@ export const ExecutionMonitor: React.FC<ExecutionMonitorProps> = ({
     <>
       <Card
         title="Execution Monitor"
-        subtitle={`Pipeline progress: ${progress.toFixed(0)}%`}
+        subtitle={
+          totalAgents > 0 
+            ? `Pipeline progress: ${progress.toFixed(0)}% (${completedAgents}/${totalAgents} agents completed)`
+            : `Pipeline progress: ${progress.toFixed(0)}%`
+        }
         icon={<TrendingUp className="w-5 h-5" />}
       >
         {/* Streaming Status Indicator */}

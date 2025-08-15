@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useIndexedDB } from './useIndexedDB';
-import { generateId, validatePipelineForm, validateAgentOrder, normalizeAgentOrder } from '../utils';
+import { generateId, validatePipelineForm } from '../utils';
 import { Pipeline, PipelineForm, Agent, PipelineStatus, STORAGE_KEYS, DEFAULT_VALUES, DashViews, LogEntry } from '../types';
 
 export const usePipelineManagement = () => {
@@ -37,19 +37,11 @@ export const usePipelineManagement = () => {
     );
   }, [currentPipeline, pipelineForm, agents]);
 
-  // Update saved status when changes occur
-  const updateSavedStatus = useCallback(() => {
-    setIsSaved(!hasUnsavedChanges && currentPipeline !== null);
-  }, [hasUnsavedChanges, currentPipeline]);
-
   // Pipeline form handlers
   const updatePipelineForm = useCallback((field: keyof PipelineForm, value: string) => {
     setPipelineForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
     setIsSaved(false);
-  }, [errors]);
+  }, []);
 
   const resetPipelineForm = useCallback(() => {
     setPipelineForm({
@@ -84,7 +76,20 @@ export const usePipelineManagement = () => {
     resetPipelineForm();
   }, [resetPipelineForm, setCurrentView]);
 
-  const selectPipeline = useCallback((pipeline: Pipeline) => {
+  // Function to restore execution state from saved pipeline data
+  const restoreExecutionState = useCallback((pipeline: Pipeline) => {
+    // This will be called by the execution management hook to restore state
+    return {
+      hasResults: !!(pipeline.lastExecutionResult || pipeline.lastExecutionError),
+      lastExecutionResult: pipeline.lastExecutionResult,
+      lastExecutionError: pipeline.lastExecutionError,
+      lastExecutionLogs: pipeline.lastExecutionLogs,
+      lastExecutionDate: pipeline.lastExecutionDate,
+      status: pipeline.status,
+    };
+  }, []);
+
+  const selectPipeline = useCallback((pipeline: Pipeline, onExecutionStateRestore?: (pipelineData: ReturnType<typeof restoreExecutionState>) => void) => {
     setCurrentPipeline(pipeline);
     setPipelineForm({
       name: pipeline.name,
@@ -97,7 +102,13 @@ export const usePipelineManagement = () => {
     
     // Initialize agent order for existing agents
     setTimeout(() => initializeAgentOrder(), 0);
-  }, [initializeAgentOrder, setCurrentView]);
+    
+    // Restore execution state if callback is provided
+    if (onExecutionStateRestore) {
+      const pipelineData = restoreExecutionState(pipeline);
+      onExecutionStateRestore(pipelineData);
+    }
+  }, [initializeAgentOrder, setCurrentView, restoreExecutionState]);
 
   const closePipeline = useCallback(() => {
     setCurrentPipeline(null);
@@ -118,9 +129,14 @@ export const usePipelineManagement = () => {
       name: pipelineForm.name,
       firstPrompt: pipelineForm.firstPrompt,
       agents: agents,
-      status: PipelineStatus.IDLE,
+      status: currentPipeline?.status || PipelineStatus.IDLE,
       createdAt: currentPipeline?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      // Preserve execution results when updating existing pipeline
+      lastExecutionResult: currentPipeline?.lastExecutionResult,
+      lastExecutionError: currentPipeline?.lastExecutionError,
+      lastExecutionLogs: currentPipeline?.lastExecutionLogs,
+      lastExecutionDate: currentPipeline?.lastExecutionDate,
     };
 
     if (currentPipeline) {
@@ -269,17 +285,6 @@ export const usePipelineManagement = () => {
     setIsSaved(false);
   }, []);
 
-  // Ensure agent order consistency
-  const ensureAgentOrderConsistency = useCallback(() => {
-    setAgents(prev => {
-      if (!validateAgentOrder(prev)) {
-        console.warn('Agent order inconsistency detected, normalizing...');
-        return normalizeAgentOrder(prev);
-      }
-      return prev;
-    });
-  }, []);
-
   // Agent reordering functionality
   const moveAgentUp = useCallback((agentId: string) => {
     setAgents(prev => {
@@ -318,16 +323,17 @@ export const usePipelineManagement = () => {
       const newAgents = [...prev];
       const [movedAgent] = newAgents.splice(fromIndex, 1);
       newAgents.splice(toIndex, 0, movedAgent);
-      // Update all order fields to match new positions
+      
+      // Update order fields to match new positions
       newAgents.forEach((agent, index) => {
         agent.order = index;
       });
+      
       return newAgents;
     });
     setIsSaved(false);
   }, []);
 
-  // View management
   const setCurrentViewHandler = useCallback((view: DashViews) => {
     setCurrentView(view);
   }, []);
@@ -341,18 +347,18 @@ export const usePipelineManagement = () => {
 
   return {
     // State
-    pipelines: (pipelines as unknown as Pipeline[]),
+    pipelines,
     currentPipeline,
     currentView,
     pipelineForm,
     agents,
     errors,
     isSaved,
-    isLoadingPipelines,
-    pipelinesError,
     isFormValid,
     hasUnsavedChanges,
-    
+    isLoadingPipelines,
+    pipelinesError,
+
     // Actions
     createNewPipeline,
     selectPipeline,
@@ -363,16 +369,13 @@ export const usePipelineManagement = () => {
     clearResults,
     updateExecutionResults,
     updatePipelineForm,
-    resetPipelineForm,
     addAgent,
     updateAgent,
     removeAgent,
     moveAgentUp,
     moveAgentDown,
     reorderAgents,
-    ensureAgentOrderConsistency,
-    initializeAgentOrder,
-    setCurrentView: setCurrentViewHandler,
-    updateSavedStatus,
+    setCurrentViewHandler,
+    restoreExecutionState,
   };
 };

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { LOG_TYPES } from '../constants';
 import { apiClient } from '../api/client';
-import { PipelineForm, Agent, LogEntry } from '../types';
+import { PipelineForm, Agent, LogEntry, PipelineStatus } from '../types';
 
 interface AgentProgress {
   status: 'started' | 'processing' | 'completed' | 'error';
@@ -25,6 +25,8 @@ export const usePipelineExecution = () => {
   const [progress, setProgress] = useState(0);
   const [currentAgent, setCurrentAgent] = useState<string | null>(null);
   const [agentProgress, setAgentProgress] = useState<Record<string, AgentProgress>>({});
+  const [totalAgents, setTotalAgents] = useState(0);
+  const [completedAgents, setCompletedAgents] = useState(0);
 
   const addLog = useCallback((type: string, message: string, metadata: Record<string, unknown> = {}) => {
     const timestamp = new Date().toLocaleTimeString("en-US", {
@@ -39,6 +41,18 @@ export const usePipelineExecution = () => {
       level: type as 'info' | 'warning' | 'error', 
       metadata 
     }]);
+  }, []);
+
+  // Calculate progress based on agent completion
+  const updateProgress = useCallback((newCompletedAgents: number, total: number) => {
+    if (total === 0) return;
+    
+    // Base progress: 10% for setup, 80% for agent execution, 10% for completion
+    const setupProgress = 10;
+    const agentProgress = (newCompletedAgents / total) * 80;
+    const totalProgress = Math.min(setupProgress + agentProgress, 90);
+    
+    setProgress(totalProgress);
   }, []);
 
   // Execute pipeline with streaming updates
@@ -63,6 +77,8 @@ export const usePipelineExecution = () => {
       setResult("");
       setCurrentAgent(null);
       setAgentProgress({});
+      setTotalAgents(agents.length);
+      setCompletedAgents(0);
 
       try {
         addLog(LOG_TYPES.INFO, "🚀 Starting streaming pipeline execution...");
@@ -72,7 +88,7 @@ export const usePipelineExecution = () => {
           LOG_TYPES.INFO,
           `📋 Pipeline: ${pipelineForm.name} with ${agents.length} agent(s)`
         );
-        setProgress(20);
+        setProgress(15);
 
         // Execute pipeline with streaming updates
         const streamResult = await apiClient.executePipelineStream(
@@ -94,7 +110,7 @@ export const usePipelineExecution = () => {
               case "status":
                 if (data.type === "pipeline_started" && data.message) {
                   addLog(LOG_TYPES.INFO, data.message);
-                  setProgress(30);
+                  setProgress(20);
                 } else if (data.type === "pipeline_completed" && data.result && data.message) {
                   addLog(LOG_TYPES.SUCCESS, data.message);
                   setResult(data.result);
@@ -115,6 +131,9 @@ export const usePipelineExecution = () => {
                     ...prev,
                     [agentName]: { status: "started", progress: 0 },
                   }));
+                  
+                  // Small progress bump when agent starts
+                  setProgress(prev => Math.min(prev + 2, 25));
                 }
                 break;
 
@@ -182,6 +201,9 @@ export const usePipelineExecution = () => {
                     ...prev,
                     [agentName]: { status: "processing", progress: 50 },
                   }));
+                  
+                  // Small progress bump when agent starts processing
+                  setProgress(prev => Math.min(prev + 3, 30));
                 }
                 break;
 
@@ -223,6 +245,19 @@ export const usePipelineExecution = () => {
                     ...prev,
                     [agentName]: { status: "completed", progress: 100 },
                   }));
+                  
+                  // Update progress based on agent completion
+                  setCompletedAgents(prev => {
+                    const newCompleted = prev + 1;
+                    updateProgress(newCompleted, agents.length);
+                    
+                    // If all agents are completed, set progress to 100%
+                    if (newCompleted === agents.length) {
+                      setProgress(100);
+                    }
+                    
+                    return newCompleted;
+                  });
                 }
                 break;
 
@@ -248,6 +283,19 @@ export const usePipelineExecution = () => {
                     ...prev,
                     [agentName]: { status: "error", progress: 0 },
                   }));
+                  
+                  // Update progress even for failed agents to maintain accuracy
+                  setCompletedAgents(prev => {
+                    const newCompleted = prev + 1;
+                    updateProgress(newCompleted, agents.length);
+                    
+                    // If all agents are completed (including failed ones), set progress to 100%
+                    if (newCompleted === agents.length) {
+                      setProgress(100);
+                    }
+                    
+                    return newCompleted;
+                  });
                 }
                 break;
 
@@ -286,7 +334,7 @@ export const usePipelineExecution = () => {
         setIsRunning(false);
       }
     },
-    [addLog, result]
+    [addLog, result, updateProgress]
   );
 
   // Execute pipeline with complete configuration in one request (legacy)
@@ -296,6 +344,8 @@ export const usePipelineExecution = () => {
       setLogs([]);
       setResult("");
       setProgress(0);
+      setTotalAgents(agents.length);
+      setCompletedAgents(0);
 
       try {
         addLog(LOG_TYPES.INFO, "🚀 Starting pipeline execution...");
@@ -305,7 +355,7 @@ export const usePipelineExecution = () => {
           LOG_TYPES.INFO,
           `📋 Pipeline: ${pipelineForm.name} with ${agents.length} agent(s)`
         );
-        setProgress(30);
+        setProgress(15);
 
         // Execute pipeline with complete configuration
         const executionResult = await apiClient.executePipeline(
@@ -345,6 +395,46 @@ export const usePipelineExecution = () => {
     setIsRunning(false);
     setCurrentAgent(null);
     setAgentProgress({});
+    setTotalAgents(0);
+    setCompletedAgents(0);
+  }, []);
+
+  // Restore execution state from saved pipeline data
+  const restoreExecutionState = useCallback((pipelineData: {
+    hasResults: boolean;
+    lastExecutionResult?: string;
+    lastExecutionError?: string;
+    lastExecutionLogs?: LogEntry[];
+    lastExecutionDate?: string;
+    status: PipelineStatus;
+  }) => {
+    if (pipelineData.hasResults) {
+      // Restore logs if available
+      if (pipelineData.lastExecutionLogs) {
+        setLogs(pipelineData.lastExecutionLogs);
+      }
+      
+      // Restore result if available
+      if (pipelineData.lastExecutionResult) {
+        setResult(pipelineData.lastExecutionResult);
+      }
+      
+      // Set progress based on status
+      if (pipelineData.status === PipelineStatus.COMPLETED) {
+        setProgress(100);
+      } else if (pipelineData.status === PipelineStatus.ERROR) {
+        setProgress(100); // Error also means completion
+      } else {
+        setProgress(0);
+      }
+      
+      // Reset execution state
+      setIsRunning(false);
+      setCurrentAgent(null);
+      setAgentProgress({});
+      setTotalAgents(0);
+      setCompletedAgents(0);
+    }
   }, []);
 
   return {
@@ -354,8 +444,11 @@ export const usePipelineExecution = () => {
     progress,
     currentAgent,
     agentProgress,
+    totalAgents,
+    completedAgents,
     runPipeline,
     runPipelineStream,
     resetExecution,
+    restoreExecutionState,
   };
 };

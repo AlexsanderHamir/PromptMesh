@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { usePipelineManagement } from '../hooks/usePipelineManagement';
 import { useAgentManagement } from '../hooks/useAgentManagement';
 import { useExecutionManagement } from '../hooks/useExecutionManagement';
@@ -24,11 +24,6 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
   const agentManagement = useAgentManagement();
   const executionManagement = useExecutionManagement();
 
-  // Create stable function references
-  const setCurrentViewStable = useCallback((view: DashViews) => {
-    pipelineManagement.setCurrentView(view);
-  }, [pipelineManagement]);
-
   // Note: Result saving is now handled directly in the execution management hooks
   // No need for the callback setup that was causing infinite loops
 
@@ -52,6 +47,8 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
         progress: executionManagement.progress,
         currentAgent: executionManagement.currentAgent,
         agentProgress: typeof executionManagement.agentProgress === 'number' ? executionManagement.agentProgress : 0,
+        totalAgents: executionManagement.totalAgents,
+        completedAgents: executionManagement.completedAgents,
       } as ExecutionState,
       pipelinesError: pipelineManagement.pipelinesError || undefined,
       isFormValid: pipelineManagement.isFormValid,
@@ -59,7 +56,12 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
 
       // Pipeline actions - create stable function references
       createNewPipeline: () => pipelineManagement.createNewPipeline(),
-      selectPipeline: (pipeline: Pipeline) => pipelineManagement.selectPipeline(pipeline),
+      selectPipeline: (pipeline: Pipeline) => {
+        pipelineManagement.selectPipeline(pipeline, (pipelineData) => {
+          // Restore execution state when pipeline is selected
+          executionManagement.restoreExecutionState(pipelineData);
+        });
+      },
       closePipeline: () => pipelineManagement.closePipeline(),
       savePipeline: () => pipelineManagement.savePipeline(),
       deletePipeline: (pipelineId: string) => pipelineManagement.deletePipeline(pipelineId),
@@ -73,7 +75,7 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
             () => {
               // Status update handled silently
             },
-            pipelineManagement.setCurrentView,
+            pipelineManagement.setCurrentViewHandler,
             (results) => {
               // Save results directly to pipeline management
               pipelineManagement.updateExecutionResults(results);
@@ -106,13 +108,16 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
       reorderAgents: (fromIndex: number, toIndex: number) => {
         pipelineManagement.reorderAgents(fromIndex, toIndex);
       },
-      setCurrentView: (view: DashViews) => setCurrentViewStable(view),
-      setUploadedFiles: (files: File[]) => {
-        executionManagement.setUploadedFiles(files);
-      },
+      setCurrentView: (view: DashViews) => pipelineManagement.setCurrentViewHandler(view),
+      setUploadedFiles: (files: File[]) => executionManagement.setUploadedFiles(files),
       toggleStreaming: () => executionManagement.toggleStreaming(),
       resetExecution: () => executionManagement.resetExecution(),
       clearExecutionState: () => executionManagement.clearExecutionState(),
+      restoreExecutionState: (pipeline: Pipeline) => {
+        const pipelineData = pipelineManagement.restoreExecutionState(pipeline);
+        executionManagement.restoreExecutionState(pipelineData);
+        return pipelineData;
+      },
     };
   }, [
     // Only depend on primitive values, not objects

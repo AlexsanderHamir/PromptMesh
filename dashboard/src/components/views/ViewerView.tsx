@@ -13,7 +13,7 @@ export const ViewerView: React.FC = () => {
     setCurrentView,
   } = usePipelineContext();
 
-  const { isRunning, logs, result, progress, currentAgent, agentProgress } = executionState;
+  const { isRunning, logs, result, progress, currentAgent, agentProgress, totalAgents, completedAgents } = executionState;
   
   // Check if we have current execution data
   const hasCurrentResult = result && result.trim();
@@ -40,6 +40,8 @@ export const ViewerView: React.FC = () => {
           currentAgent={currentAgent}
           agentProgress={formattedAgentProgress}
           isStreaming={useStreaming}
+          totalAgents={totalAgents}
+          completedAgents={completedAgents}
         />
         
         {hasCurrentResult && (
