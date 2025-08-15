@@ -105,3 +105,26 @@ export const duplicatePipeline = (pipeline: Pipeline): Pipeline => {
     updatedAt: new Date().toISOString(),
   };
 };
+
+// Validate agent order consistency
+export const validateAgentOrder = (agents: Agent[]): boolean => {
+  if (agents.length === 0) return true;
+  
+  // Check if order field matches array position
+  for (let i = 0; i < agents.length; i++) {
+    if (agents[i].order !== i) {
+      console.warn(`Agent order mismatch: agent ${agents[i].name} has order ${agents[i].order} but is at position ${i}`);
+      return false;
+    }
+  }
+  
+  return true;
+};
+
+// Normalize agent order to ensure consistency
+export const normalizeAgentOrder = (agents: Agent[]): Agent[] => {
+  return agents.map((agent, index) => ({
+    ...agent,
+    order: index,
+  }));
+};

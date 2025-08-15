@@ -22,6 +22,7 @@ interface AgentForm {
   provider: string;
   model: string;
   systemMsg: string;
+  order: number; // Add order field to match Agent interface
 }
 
 export const BuilderView: React.FC = () => {
@@ -42,6 +43,8 @@ export const BuilderView: React.FC = () => {
     addAgent,
     removeAgent,
     updateAgent,
+    moveAgentUp,
+    moveAgentDown,
     isFormValid,
     setCurrentView,
   } = usePipelineContext();
@@ -56,6 +59,7 @@ export const BuilderView: React.FC = () => {
     provider: 'openai',
     model: '',
     systemMsg: '',
+    order: 0, // Initialize order to 0
   });
   const [agentFormErrors, setAgentFormErrors] = useState<Record<string, string | null>>({});
 
@@ -90,12 +94,13 @@ export const BuilderView: React.FC = () => {
       provider: 'openai',
       model: '',
       systemMsg: '',
+      order: 0, // Reset order to 0
     });
     setAgentFormErrors({});
   };
 
   // Handle agent form changes
-  const handleAgentFormChange = (field: keyof AgentForm, value: string) => {
+  const handleAgentFormChange = (field: keyof AgentForm, value: string | number) => {
     setAgentForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -152,6 +157,7 @@ export const BuilderView: React.FC = () => {
       provider: agent.provider,
       model: agent.model || '',
       systemMsg: agent.systemMsg,
+      order: agent.order, // Set order from the agent
     });
     setShowAddAgentModal(true);
   };
@@ -178,6 +184,8 @@ export const BuilderView: React.FC = () => {
         onShowAddAgent={handleShowAddAgent}
         onEditAgent={handleEditAgent}
         onRemoveAgent={handleRemoveAgent}
+        onMoveAgentUp={moveAgentUp}
+        onMoveAgentDown={moveAgentDown}
       />
       
       <PipelineActions

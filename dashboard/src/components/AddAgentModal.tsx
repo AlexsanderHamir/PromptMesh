@@ -17,7 +17,7 @@ interface AddAgentModalProps {
   agentForm: AgentForm;
   errors: Record<string, string | null>;
   isEditing?: boolean;
-  onFormChange: (field: keyof AgentForm, value: string) => void;
+  onFormChange: (field: keyof AgentForm, value: string | number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }

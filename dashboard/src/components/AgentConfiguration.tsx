@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Plus, X, Edit } from "lucide-react";
+import { Bot, Plus, X, Edit, ChevronUp, ChevronDown } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Agent } from "../types";
@@ -10,6 +10,8 @@ interface AgentConfigurationProps {
   onShowAddAgent?: () => void;
   onEditAgent?: (agent: Agent) => void;
   onRemoveAgent?: (agentId: string) => void;
+  onMoveAgentUp?: (agentId: string) => void;
+  onMoveAgentDown?: (agentId: string) => void;
   onClosePipeline?: () => void;
 }
 
@@ -19,6 +21,8 @@ export const AgentConfiguration: React.FC<AgentConfigurationProps> = ({
   onShowAddAgent,
   onEditAgent,
   onRemoveAgent,
+  onMoveAgentUp,
+  onMoveAgentDown,
   onClosePipeline,
 }) => (
   <Card
@@ -66,7 +70,7 @@ export const AgentConfiguration: React.FC<AgentConfigurationProps> = ({
             className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 flex items-center gap-4"
           >
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-10 h-10 rounded-lg flex items-center justify-center font-semibold">
-              {index + 1}
+              {agent.order + 1}
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold text-slate-100 mb-1">
@@ -81,6 +85,28 @@ export const AgentConfiguration: React.FC<AgentConfigurationProps> = ({
               <span className="bg-slate-700 px-3 py-1 rounded-full text-xs font-medium">
                 {agent.provider}
               </span>
+              {onMoveAgentUp && index > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onMoveAgentUp(agent.id)}
+                  title="Move agent up"
+                  className="p-1 h-8 w-8"
+                >
+                  <ChevronUp className="w-3 h-3" />
+                </Button>
+              )}
+              {onMoveAgentDown && index < agents.length - 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onMoveAgentDown(agent.id)}
+                  title="Move agent down"
+                  className="p-1 h-8 w-8"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              )}
               {onEditAgent && (
                 <Button
                   variant="secondary"

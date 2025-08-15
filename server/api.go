@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -61,6 +62,24 @@ func (s *Server) registerRoutes(mux *http.ServeMux, corsHandler func(http.Handle
 	mux.HandleFunc("/api/pipelines/execute/stream", corsHandler(s.ExecutePipelineStream))
 }
 
+// validateAgentOrder ensures agents have unique names and validates the order
+func validateAgentOrder(agents []AgentConfig) error {
+	if len(agents) == 0 {
+		return errors.New("at least one agent is required")
+	}
+
+	// Ensure agents have unique names to avoid confusion
+	seenNames := make(map[string]bool)
+	for i, agent := range agents {
+		if seenNames[agent.Name] {
+			return fmt.Errorf("duplicate agent name '%s' at position %d", agent.Name, i+1)
+		}
+		seenNames[agent.Name] = true
+	}
+
+	return nil
+}
+
 // ExecutePipeline handles the complete pipeline execution in one request
 func (s *Server) ExecutePipeline(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -82,6 +101,12 @@ func (s *Server) ExecutePipeline(w http.ResponseWriter, r *http.Request) {
 
 	if len(req.Agents) == 0 {
 		s.sendError(w, http.StatusBadRequest, "At least one agent is required")
+		return
+	}
+
+	// Validate agent order and uniqueness
+	if err := validateAgentOrder(req.Agents); err != nil {
+		s.sendError(w, http.StatusBadRequest, fmt.Sprintf("Agent validation failed: %v", err))
 		return
 	}
 
@@ -180,6 +205,12 @@ func (s *Server) ExecutePipelineStream(w http.ResponseWriter, r *http.Request) {
 
 	if len(req.Agents) == 0 {
 		s.sendError(w, http.StatusBadRequest, "At least one agent is required")
+		return
+	}
+
+	// Validate agent order and uniqueness
+	if err := validateAgentOrder(req.Agents); err != nil {
+		s.sendSSEError(w, fmt.Sprintf("Agent validation failed: %v", err))
 		return
 	}
 

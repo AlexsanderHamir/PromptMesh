@@ -44,10 +44,23 @@ export const usePipelineExecution = () => {
   // Execute pipeline with streaming updates
   const runPipelineStream = useCallback(
     async (pipelineForm: PipelineForm, agents: Agent[], uploadedFiles: UploadedFile[] = []) => {
+      if (agents.length === 0) {
+        throw new Error("No agents configured for pipeline execution");
+      }
+
+      // Validate agent order before execution
+      const sortedAgents = [...agents].sort((a, b) => a.order - b.order);
+      if (!sortedAgents.every((agent, index) => agent.order === index)) {
+        console.warn('Agent order inconsistency detected, normalizing before execution');
+        sortedAgents.forEach((agent, index) => {
+          agent.order = index;
+        });
+      }
+
       setIsRunning(true);
+      setProgress(10);
       setLogs([]);
       setResult("");
-      setProgress(0);
       setCurrentAgent(null);
       setAgentProgress({});
 
@@ -64,7 +77,7 @@ export const usePipelineExecution = () => {
         // Execute pipeline with streaming updates
         const streamResult = await apiClient.executePipelineStream(
           pipelineForm,
-          agents,
+          sortedAgents, // Use sorted agents to ensure proper order
           uploadedFiles,
           (eventType: string, data: {
             type?: string;

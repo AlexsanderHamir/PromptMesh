@@ -12,6 +12,7 @@ export const useAgentManagement = () => {
     provider: '',
     model: '',
     systemMsg: '',
+    order: 0, // Initialize order to 0
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -22,6 +23,7 @@ export const useAgentManagement = () => {
       provider: '',
       model: '',
       systemMsg: '',
+      order: 0, // Reset order to 0
     });
     setErrors({});
   }, []);
@@ -40,6 +42,7 @@ export const useAgentManagement = () => {
       provider: agent.provider,
       model: agent.model || '',
       systemMsg: agent.systemMsg,
+      order: agent.order, // Set order from the agent
     });
     setEditingAgent(agent);
     setIsEditingAgent(true);
@@ -54,7 +57,7 @@ export const useAgentManagement = () => {
     setIsEditingAgent(false);
   }, [resetAgentForm]);
 
-  const updateAgentForm = useCallback((field: keyof AgentForm, value: string) => {
+  const updateAgentForm = useCallback((field: keyof AgentForm, value: string | number) => {
     setAgentForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));

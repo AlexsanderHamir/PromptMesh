@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { usePipelineExecution } from './usePipelineExecution';
-import { PipelineForm, Agent, PipelineStatus, DashViews } from '../types';
+import { PipelineForm, Agent, PipelineStatus, DashViews, LogEntry } from '../types';
 
+// Interface matching what the API client expects
 interface UploadedFile {
   content: string;
   metadata: {
@@ -13,7 +14,7 @@ interface UploadedFile {
 }
 
 export const useExecutionManagement = () => {
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [useStreaming, setUseStreaming] = useState(true);
 
   const {
@@ -27,6 +28,76 @@ export const useExecutionManagement = () => {
     runPipelineStream,
     resetExecution,
   } = usePipelineExecution();
+
+  // Convert File[] to UploadedFile[] for API calls
+  const convertFilesForAPI = useCallback(async (files: File[]): Promise<UploadedFile[]> => {
+    const convertedFiles: UploadedFile[] = [];
+    
+    for (const file of files) {
+      try {
+        const content = await file.text();
+        convertedFiles.push({
+          content,
+          metadata: {
+            name: file.name,
+            type: file.type.split('/')[0] || 'unknown',
+            size: file.size,
+            mimeType: file.type,
+          }
+        });
+      } catch (error) {
+        console.error(`Failed to read file ${file.name}:`, error);
+      }
+    }
+    
+    return convertedFiles;
+  }, []);
+
+  // Auto-save results when they become available
+  const [onResultSave, setOnResultSave] = useState<((results: {
+    status: PipelineStatus;
+    lastExecutionDate: string;
+    lastExecutionLogs?: LogEntry[];
+    lastExecutionResult?: string;
+    lastExecutionError?: string;
+  }) => void) | null>(null);
+
+  // Set the callback for saving results
+  const setResultSaveCallback = useCallback((callback: (results: {
+    status: PipelineStatus;
+    lastExecutionDate: string;
+    lastExecutionLogs?: LogEntry[];
+    lastExecutionResult?: string;
+    lastExecutionError?: string;
+  }) => void) => {
+    setOnResultSave(() => callback);
+  }, []);
+
+  // Auto-save results when they become available
+  useEffect(() => {
+    if (onResultSave && !isRunning && (result || logs.length > 0)) {
+      // Determine if there was an error
+      const hasError = result === '' && logs.length > 0 && logs.some(log => log.level === 'error');
+      
+      if (hasError) {
+        // Save error results
+        onResultSave({
+          status: PipelineStatus.ERROR,
+          lastExecutionDate: new Date().toISOString(),
+          lastExecutionLogs: logs,
+          lastExecutionError: 'Pipeline execution failed - see logs for details',
+        });
+      } else if (result && result.trim()) {
+        // Save successful results
+        onResultSave({
+          status: PipelineStatus.COMPLETED,
+          lastExecutionDate: new Date().toISOString(),
+          lastExecutionLogs: logs,
+          lastExecutionResult: result,
+        });
+      }
+    }
+  }, [onResultSave, isRunning, result, logs]);
 
   const toggleStreaming = useCallback(() => {
     setUseStreaming(prev => !prev);
@@ -46,8 +117,11 @@ export const useExecutionManagement = () => {
         setCurrentView(DashViews.VIEWER);
       }
       
+      // Convert files for API if needed
+      const apiFiles = await convertFilesForAPI(uploadedFiles);
+      
       const result = useStreaming
-        ? await runPipelineStream(pipelineForm, agents, uploadedFiles)
+        ? await runPipelineStream(pipelineForm, agents, apiFiles)
         : await runPipeline(pipelineForm, agents);
 
       onStatusUpdate(PipelineStatus.COMPLETED);
@@ -57,7 +131,7 @@ export const useExecutionManagement = () => {
       onStatusUpdate(PipelineStatus.ERROR, errorMessage);
       throw error;
     }
-  }, [useStreaming, runPipelineStream, runPipeline, uploadedFiles]);
+  }, [useStreaming, runPipelineStream, runPipeline, uploadedFiles, convertFilesForAPI]);
 
   const clearExecutionData = useCallback(() => {
     resetExecution();
@@ -81,5 +155,6 @@ export const useExecutionManagement = () => {
     setUploadedFiles,
     clearExecutionData,
     resetExecution,
+    setResultSaveCallback,
   };
 };

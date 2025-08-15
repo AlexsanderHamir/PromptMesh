@@ -145,9 +145,7 @@ func (a *Agent) Handle(input string) (string, error) {
 		return resp, nil
 	}
 
-	if a.NextAgent != nil {
-		return a.NextAgent.Handle(resp)
-	}
-
-	return "", fmt.Errorf("[%s]: No NextAgent found", a.Name)
+	// The orchestration layer handles the flow between agents
+	// This agent just returns its response
+	return resp, nil
 }

@@ -1,26 +1,8 @@
-import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useCallback, useEffect } from 'react';
 import { usePipelineManagement } from '../hooks/usePipelineManagement';
 import { useAgentManagement } from '../hooks/useAgentManagement';
 import { useExecutionManagement } from '../hooks/useExecutionManagement';
-import {
-  Pipeline,
-  Agent,
-  PipelineContextValue,
-  ExecutionState,
-  PipelineStatus,
-  PipelineForm,
-  DashViews
-} from '../types';
-
-interface UploadedFile {
-  content: string;
-  metadata: {
-    name: string;
-    type: string;
-    size: number;
-    mimeType: string;
-  };
-}
+import { Pipeline, PipelineForm, Agent, PipelineStatus, DashViews, ExecutionState, PipelineContextValue } from '../types';
 
 interface PipelineProviderProps {
   children: React.ReactNode;
@@ -46,6 +28,13 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
   const setCurrentViewStable = useCallback((view: DashViews) => {
     pipelineManagement.setCurrentView(view);
   }, [pipelineManagement]);
+
+  // Set up automatic result saving
+  useEffect(() => {
+    executionManagement.setResultSaveCallback((results) => {
+      pipelineManagement.updateExecutionResults(results);
+    });
+  }, [executionManagement, pipelineManagement]);
 
   // Create the context value with useMemo but only depend on primitive values
   const contextValue = useMemo((): PipelineContextValue => {
@@ -91,16 +80,8 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
             pipelineManagement.setCurrentView
           );
           
-          // Save execution results after completion
-          const result = executionManagement.result;
-          if (result) {
-            pipelineManagement.updateExecutionResults({
-              status: PipelineStatus.COMPLETED,
-              lastExecutionDate: new Date().toISOString(),
-              lastExecutionLogs: executionManagement.logs,
-              lastExecutionResult: result,
-            });
-          }
+          // Results are now automatically saved via the callback
+          // No need to manually save here
           
         } catch (error) {
           console.error('Pipeline execution failed:', error);
@@ -117,25 +98,25 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
       addAgent: (agent: Omit<Agent, 'id'>) => {
         pipelineManagement.addAgent(agent);
       },
-      updateAgent: (agentId: string, updates: Omit<Agent, 'id'>) => {
+      updateAgent: (agentId: string, updates: Partial<Omit<Agent, 'id' | 'order'>>) => {
         pipelineManagement.updateAgent(agentId, updates);
       },
       editAgent: (agent: Agent) => agentManagement.showEditAgentModal(agent),
       removeAgent: (agentId: string) => {
         pipelineManagement.removeAgent(agentId);
       },
-      setCurrentView: setCurrentViewStable,
+      moveAgentUp: (agentId: string) => {
+        pipelineManagement.moveAgentUp(agentId);
+      },
+      moveAgentDown: (agentId: string) => {
+        pipelineManagement.moveAgentDown(agentId);
+      },
+      reorderAgents: (fromIndex: number, toIndex: number) => {
+        pipelineManagement.reorderAgents(fromIndex, toIndex);
+      },
+      setCurrentView: (view: DashViews) => setCurrentViewStable(view),
       setUploadedFiles: (files: File[]) => {
-        const convertedFiles: UploadedFile[] = files.map(file => ({
-          content: '',
-          metadata: {
-            name: file.name,
-            type: file.type.split('/')[0] || 'unknown',
-            size: file.size,
-            mimeType: file.type,
-          }
-        }));
-        executionManagement.setUploadedFiles(convertedFiles);
+        executionManagement.setUploadedFiles(files);
       },
       toggleStreaming: () => executionManagement.toggleStreaming(),
       resetExecution: () => executionManagement.resetExecution(),

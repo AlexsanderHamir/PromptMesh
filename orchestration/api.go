@@ -42,12 +42,33 @@ func (ag *AgentManager) StartPipeline() (string, error) {
 	ag.connectAgents()
 
 	triggerAgent := ag.pipeline[0]
-	finalRes, err := triggerAgent.Handle(ag.FirstPrompt)
+	finalRes, err := ag.executePipeline(triggerAgent, ag.FirstPrompt)
 	if err != nil {
-		return "", fmt.Errorf("handle failed: %w", err)
+		return "", fmt.Errorf("pipeline execution failed: %w", err)
 	}
 
 	return finalRes, nil
+}
+
+// executePipeline executes the pipeline step by step without streaming
+func (ag *AgentManager) executePipeline(currentAgent *agents.Agent, input string) (string, error) {
+	if currentAgent == nil {
+		return input, nil
+	}
+
+	// Execute the agent
+	result, err := currentAgent.Handle(input)
+	if err != nil {
+		return "", fmt.Errorf("agent '%s' failed: %w", currentAgent.Name, err)
+	}
+
+	// If this is the last agent, return the result
+	if currentAgent.IsLast {
+		return result, nil
+	}
+
+	// Continue with the next agent
+	return ag.executePipeline(currentAgent.NextAgent, result)
 }
 
 // StartPipelineStream executes the pipeline with streaming updates via SSE

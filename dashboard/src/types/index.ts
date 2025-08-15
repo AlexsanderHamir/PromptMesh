@@ -5,6 +5,7 @@ export interface Agent {
   provider: string;
   model: string;
   systemMsg: string;
+  order: number; // Explicit order in the pipeline
 }
 
 export interface Pipeline {
@@ -32,6 +33,7 @@ export interface AgentForm {
   provider: string;
   model: string;
   systemMsg: string;
+  order: number; // Add order field to match Agent interface
 }
 
 export interface LogEntry {
@@ -84,9 +86,12 @@ export interface PipelineContextActions {
   runPipeline: () => Promise<void>;
   updatePipelineForm: (field: keyof PipelineForm, value: string) => void;
   addAgent: (agent: Omit<Agent, 'id'>) => void;
-  updateAgent: (agentId: string, updates: Omit<Agent, 'id'>) => void;
+  updateAgent: (agentId: string, updates: Partial<Omit<Agent, 'id' | 'order'>>) => void;
   editAgent: (agent: Agent) => void;
   removeAgent: (agentId: string) => void;
+  moveAgentUp: (agentId: string) => void;
+  moveAgentDown: (agentId: string) => void;
+  reorderAgents: (fromIndex: number, toIndex: number) => void;
   setCurrentView: (view: DashViews) => void;
   setUploadedFiles: (files: File[]) => void;
   toggleStreaming: () => void;

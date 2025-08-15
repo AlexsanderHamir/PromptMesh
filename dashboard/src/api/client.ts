@@ -184,13 +184,15 @@ class ApiClient {
     const payload: PipelineExecutionRequest = {
       name: pipelineForm.name,
       first_prompt: enhancedFirstPrompt,
-      agents: agents.map((agent) => ({
-        name: agent.name,
-        role: agent.role,
-        system_msg: agent.systemMsg,
-        provider: agent.provider,
-        model: agent.model || "",
-      })),
+      agents: agents
+        .sort((a, b) => a.order - b.order) // Ensure agents are sent in correct order
+        .map((agent) => ({
+          name: agent.name,
+          role: agent.role,
+          system_msg: agent.systemMsg,
+          provider: agent.provider,
+          model: agent.model || "",
+        })),
       files_metadata: uploadedFiles.map((f) => ({
         name: f.metadata.name,
         type: f.metadata.type,

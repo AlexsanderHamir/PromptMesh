@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useIndexedDB } from './useIndexedDB';
-import { generateId, validatePipelineForm } from '../utils';
+import { generateId, validatePipelineForm, validateAgentOrder, normalizeAgentOrder } from '../utils';
 import { Pipeline, PipelineForm, Agent, PipelineStatus, STORAGE_KEYS, DEFAULT_VALUES, DashViews, LogEntry } from '../types';
 
 export const usePipelineManagement = () => {
@@ -48,39 +48,62 @@ export const usePipelineManagement = () => {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
+    setIsSaved(false);
   }, [errors]);
 
   const resetPipelineForm = useCallback(() => {
-    setPipelineForm({ name: '', firstPrompt: '' });
+    setPipelineForm({
+      name: '',
+      firstPrompt: '',
+    });
     setAgents([]);
     setErrors({});
     setIsSaved(false);
   }, []);
 
-  // Pipeline CRUD operations
+  // Initialize agent order when agents are loaded from storage
+  const initializeAgentOrder = useCallback(() => {
+    setAgents(prev => {
+      // Check if any agents are missing the order field
+      const needsOrderInit = prev.some(agent => typeof agent.order !== 'number');
+      if (needsOrderInit) {
+        console.log('Initializing agent order for existing agents...');
+        return prev.map((agent, index) => ({
+          ...agent,
+          order: index,
+        }));
+      }
+      return prev;
+    });
+  }, []);
+
+  // Pipeline management
   const createNewPipeline = useCallback(() => {
     setCurrentPipeline(null);
     setCurrentView(DashViews.BUILDER);
     resetPipelineForm();
-  }, [resetPipelineForm]);
+  }, [resetPipelineForm, setCurrentView]);
 
   const selectPipeline = useCallback((pipeline: Pipeline) => {
     setCurrentPipeline(pipeline);
-    setCurrentView(DashViews.BUILDER);
     setPipelineForm({
       name: pipeline.name,
       firstPrompt: pipeline.firstPrompt,
     });
-    setAgents(pipeline.agents || []);
-    setErrors({});
+    setAgents(pipeline.agents);
+    setCurrentView(DashViews.BUILDER);
     setIsSaved(true);
-  }, []);
+    setErrors({});
+    
+    // Initialize agent order for existing agents
+    setTimeout(() => initializeAgentOrder(), 0);
+  }, [initializeAgentOrder, setCurrentView]);
 
   const closePipeline = useCallback(() => {
     setCurrentPipeline(null);
     setCurrentView(DashViews.WELCOME);
     resetPipelineForm();
-  }, [resetPipelineForm]);
+  }, [resetPipelineForm, setCurrentView]);
 
   const savePipeline = useCallback((): boolean => {
     const validationErrors = validatePipelineForm(pipelineForm, agents);
@@ -129,7 +152,7 @@ export const usePipelineManagement = () => {
       setCurrentView(DashViews.WELCOME);
       resetPipelineForm();
     }
-  }, [currentPipeline, resetPipelineForm, typedSetPipelines]);
+  }, [currentPipeline, resetPipelineForm, typedSetPipelines, setCurrentView]);
 
   const resetPipelineStatus = useCallback((pipelineId: string) => {
     typedSetPipelines((prev: readonly Pipeline[]) => {
@@ -197,22 +220,88 @@ export const usePipelineManagement = () => {
     const newAgent: Agent = {
       ...agent,
       id: generateId(),
+      order: agents.length, // Assign order based on current position
     };
     setAgents(prev => [...prev, newAgent]);
     setIsSaved(false);
-  }, []);
+  }, [agents.length]);
 
-  const updateAgent = useCallback((agentId: string, updates: Omit<Agent, 'id'>) => {
+  const updateAgent = useCallback((agentId: string, updates: Partial<Omit<Agent, 'id' | 'order'>>) => {
     setAgents(prev => prev.map(agent => 
       agent.id === agentId 
-        ? { ...updates, id: agentId }
+        ? { ...agent, ...updates, id: agentId } // Preserve existing fields including order
         : agent
     ));
     setIsSaved(false);
   }, []);
 
   const removeAgent = useCallback((agentId: string) => {
-    setAgents(prev => prev.filter(agent => agent.id !== agentId));
+    setAgents(prev => {
+      const filtered = prev.filter(agent => agent.id !== agentId);
+      // Reorder remaining agents
+      filtered.forEach((agent, index) => {
+        agent.order = index;
+      });
+      return filtered;
+    });
+    setIsSaved(false);
+  }, []);
+
+  // Ensure agent order consistency
+  const ensureAgentOrderConsistency = useCallback(() => {
+    setAgents(prev => {
+      if (!validateAgentOrder(prev)) {
+        console.warn('Agent order inconsistency detected, normalizing...');
+        return normalizeAgentOrder(prev);
+      }
+      return prev;
+    });
+  }, []);
+
+  // Agent reordering functionality
+  const moveAgentUp = useCallback((agentId: string) => {
+    setAgents(prev => {
+      const index = prev.findIndex(agent => agent.id === agentId);
+      if (index > 0) {
+        const newAgents = [...prev];
+        [newAgents[index], newAgents[index - 1]] = [newAgents[index - 1], newAgents[index]];
+        // Update order fields to match new positions
+        newAgents[index].order = index;
+        newAgents[index - 1].order = index - 1;
+        return newAgents;
+      }
+      return prev;
+    });
+    setIsSaved(false);
+  }, []);
+
+  const moveAgentDown = useCallback((agentId: string) => {
+    setAgents(prev => {
+      const index = prev.findIndex(agent => agent.id === agentId);
+      if (index < prev.length - 1) {
+        const newAgents = [...prev];
+        [newAgents[index], newAgents[index + 1]] = [newAgents[index + 1], newAgents[index]];
+        // Update order fields to match new positions
+        newAgents[index].order = index;
+        newAgents[index + 1].order = index + 1;
+        return newAgents;
+      }
+      return prev;
+    });
+    setIsSaved(false);
+  }, []);
+
+  const reorderAgents = useCallback((fromIndex: number, toIndex: number) => {
+    setAgents(prev => {
+      const newAgents = [...prev];
+      const [movedAgent] = newAgents.splice(fromIndex, 1);
+      newAgents.splice(toIndex, 0, movedAgent);
+      // Update all order fields to match new positions
+      newAgents.forEach((agent, index) => {
+        agent.order = index;
+      });
+      return newAgents;
+    });
     setIsSaved(false);
   }, []);
 
@@ -220,6 +309,13 @@ export const usePipelineManagement = () => {
   const setCurrentViewHandler = useCallback((view: DashViews) => {
     setCurrentView(view);
   }, []);
+
+  // Initialize agent order when agents are first loaded
+  useEffect(() => {
+    if (agents.length > 0) {
+      initializeAgentOrder();
+    }
+  }, [agents.length, initializeAgentOrder]);
 
   return {
     // State
@@ -249,6 +345,11 @@ export const usePipelineManagement = () => {
     addAgent,
     updateAgent,
     removeAgent,
+    moveAgentUp,
+    moveAgentDown,
+    reorderAgents,
+    ensureAgentOrderConsistency,
+    initializeAgentOrder,
     setCurrentView: setCurrentViewHandler,
     updateSavedStatus,
   };
