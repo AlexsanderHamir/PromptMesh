@@ -2,7 +2,10 @@ module github.com/AlexsanderHamir/PromptMesh
 
 go 1.24.3
 
-require github.com/tmc/langchaingo v0.1.13
+require (
+	github.com/google/uuid v1.6.0
+	github.com/tmc/langchaingo v0.1.13
+)
 
 require (
 	cloud.google.com/go v0.114.0 // indirect
@@ -23,7 +26,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/generative-ai-go v0.15.1 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

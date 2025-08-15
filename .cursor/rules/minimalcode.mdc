@@ -1,0 +1,143 @@
+---
+description: "Always aim for minimal, focused code. Build incrementally with working states at each step. Handle edge cases progressively, not all at once. Choose a single area, problem, or entry point, and focus on it before moving to the next. Excessive code upfront makes review and iteration harder."
+alwaysApply: true
+priority: high
+---
+
+# INCREMENTAL DEVELOPMENT RULES
+
+## Core Principles
+
+- Start with the simplest working version (MVP approach)
+- Each iteration should be testable and functional
+- Add complexity only when the current implementation is proven
+- Prefer multiple small, focused functions over large, complex ones
+- Write code that can be easily extended rather than trying to predict all future needs
+
+## Implementation Strategy
+
+1. **Identify the core use case** - What's the most basic, essential functionality?
+2. **Implement the happy path** - Get the main flow working first
+3. **Test and validate** - Ensure the basic case works reliably
+4. **Add one edge case at a time** - Introduce complexity incrementally
+5. **Refactor as needed** - Clean up before adding the next feature
+
+## What to Avoid
+
+- Premature optimization or over-engineering
+- Handling all possible edge cases in the first iteration
+- Building elaborate abstractions before understanding the domain
+- Adding features "just in case" they might be needed
+- Complex error handling before the basic functionality works
+
+## When Adding Features
+
+- Can the current code handle this new requirement with minimal changes?
+- If not, refactor first, then add the feature
+- Each addition should maintain the simplicity of the existing code
+- Document why each piece of complexity was added
+
+## Code Review Checklist
+
+- Is this the simplest solution that works?
+- Are we solving the immediate problem, not hypothetical future ones?
+- Can this be broken down into smaller, independent pieces?
+- Is each function/component doing exactly one thing?
+- Would a new developer understand this code without extensive documentation?
+
+examples:
+
+- input: "Implement a function to parse CSV files"
+  output: "Start with basic parsing of one line, handling simple comma separation. Test with clean data first. Then add: 1) Quote handling, 2) Escape character support, 3) Different delimiters, 4) Header detection, 5) Error handling for malformed data."
+
+- input: "Build a user authentication system"
+  output: "Phase 1: Basic login with email/password and simple session management. Phase 2: Add password validation rules. Phase 3: Implement logout. Phase 4: Add 'remember me' functionality. Phase 5: Password reset via email. Only then consider MFA, social login, or advanced security features."
+
+- input: "Create a data processing pipeline"
+  output: "Step 1: Build data ingestion for one data source with basic validation. Step 2: Add simple transformation (e.g., column mapping). Step 3: Implement basic output to one destination. Step 4: Add error logging. Step 5: Extend to handle multiple data sources. Each step should be fully functional before moving to the next."
+
+- input: "Implement a search feature"
+  output: "Start with exact text matching on one field. Then add: 1) Case-insensitive search, 2) Multiple field search, 3) Partial matching, 4) Search result highlighting, 5) Advanced filters. Don't build complex indexing or fuzzy search until basic search proves insufficient."
+
+- input: "Build a notification system"
+  output: "Begin with in-app notifications stored in database with basic display. Then incrementally add: 1) Mark as read/unread, 2) Email notifications, 3) Push notifications, 4) Notification preferences, 5) Batching and scheduling. Each layer builds on a working foundation."
+
+## Red Flags (Stop and Simplify)
+
+- Functions longer than 20-30 lines
+- Classes with more than 5-7 methods
+- Deeply nested conditionals (more than 3 levels)
+- Complex configuration objects with many optional parameters
+- Code that requires extensive comments to explain basic functionality
+- Anticipating requirements that haven't been clearly defined
+
+## Large Scope Features - Proposal First Approach
+
+Any feature that seems to have large scope (like "build a pipeline", "create a system", "implement authentication") actually involves many moving parts and open questions. For these features:
+
+### Required Process:
+
+1. **Propose implementation first** - Don't start coding immediately
+2. **Outline components, data flow, and dependencies**
+3. **Wait for approval** before writing any code
+4. **Ask clarifying questions** if any part is ambiguous
+5. **Present proposal in clear, step-by-step format**
+6. **Suggest focusing on smaller parts** if the full scope is too complex
+
+### Large Scope Indicators:
+
+- Features that could take multiple days/weeks
+- Systems with multiple interacting components
+- Features requiring external dependencies or integrations
+- Anything involving "orchestration", "pipeline", "system", or "framework"
+- Features where requirements aren't fully specified
+
+### Proposal Template:
+
+```
+## Feature: [Name]
+### Core Purpose: [1-2 sentences]
+### Components Needed:
+1. [Component 1] - [Purpose]
+2. [Component 2] - [Purpose]
+
+### Data Flow:
+[Step-by-step description of how data/control flows]
+
+### Dependencies:
+- External libraries/services needed
+- Internal modules that need to be created/modified
+
+### Implementation Phases:
+Phase 1: [Minimal working version]
+Phase 2: [Next increment]
+...
+
+### Open Questions:
+- [Question 1]
+- [Question 2]
+
+### Recommended Starting Point:
+[Suggest which single component/phase to begin with]
+```
+
+examples:
+
+- input: "Create a data ingestion pipeline"
+  output: "I'll propose a draft implementation first. **Proposed Pipeline Components:** 1) Data source connectors (start with CSV files), 2) Validation layer, 3) Transformation engine, 4) Output handlers, 5) Error logging. **Data Flow:** Source → Validate → Transform → Output. **Starting Point:** Focus on CSV file ingestion with basic validation. **Questions:** What data sources? What transformations needed? Where should processed data go? Should I create this proposal first, or would you prefer to start with just the CSV file reader component?"
+
+- input: "Implement a multi-agent orchestration system"
+  output: "This is a complex system with many design decisions. **Proposed Architecture:** 1) Agent registry, 2) Task queue, 3) Communication layer, 4) Result aggregator, 5) Error handling. **Key Questions:** How do agents communicate? What's the task distribution strategy? How should we handle agent failures? **Recommendation:** Let me create a detailed proposal with interfaces and decision points first. Should I focus on a specific part like the agent registry, or would you prefer a complete system proposal?"
+
+- input: "Build a comprehensive user management system"
+  output: "This involves multiple subsystems. **Proposed Components:** 1) User authentication, 2) Role/permission management, 3) Profile management, 4) Account lifecycle, 5) Audit logging. **Questions:** What authentication methods? How complex should the permission system be? Integration requirements? **Suggestion:** Start with basic user registration/login, then expand. Should I create a full proposal, or begin with just the authentication component?"
+
+## Success Metrics
+
+- New features can be added without major rewrites
+- Bug fixes are isolated to small, focused areas
+- Code reviews focus on logic rather than trying to understand complexity
+- New team members can contribute quickly
+- Each component can be tested in isolation
+- Large features are properly planned before implementation begins
+- No complex systems are built without explicit design approval

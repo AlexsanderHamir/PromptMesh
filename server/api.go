@@ -56,8 +56,9 @@ func InitServer() *http.ServeMux {
 
 // RegisterRoutes sets up the server's HTTP routes with CORS middleware
 func (s *Server) registerRoutes(mux *http.ServeMux, corsHandler func(http.HandlerFunc) http.HandlerFunc) {
-	mux.HandleFunc("/pipelines/execute", corsHandler(s.ExecutePipeline))
-	mux.HandleFunc("/pipelines/execute/stream", corsHandler(s.ExecutePipelineStream))
+	mux.HandleFunc("/", corsHandler(s.HealthCheck))
+	mux.HandleFunc("/api/pipelines/execute", corsHandler(s.ExecutePipeline))
+	mux.HandleFunc("/api/pipelines/execute/stream", corsHandler(s.ExecutePipelineStream))
 }
 
 // ExecutePipeline handles the complete pipeline execution in one request
@@ -306,5 +307,14 @@ func (s *Server) sendSSEError(w http.ResponseWriter, message string) {
 	})
 	s.sendSSEMessage(w, "end", map[string]interface{}{
 		"type": "error_end",
+	})
+}
+
+// HealthCheck provides a simple health check endpoint
+func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	s.sendJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "healthy",
+		"message": "PromptMesh API server is running",
+		"time":    time.Now().Format(time.RFC3339),
 	})
 }
