@@ -8,7 +8,7 @@ interface PipelineProviderProps {
   children: React.ReactNode;
 }
 
-export const PipelineContext = createContext<PipelineContextValue | undefined>(undefined);
+const PipelineContext = createContext<PipelineContextValue | undefined>(undefined);
 
 export const usePipelineContext = () => {
   const context = useContext(PipelineContext);
@@ -18,7 +18,7 @@ export const usePipelineContext = () => {
   return context;
 };
 
-export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) => {
+const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) => {
   // Initialize all the management hooks
   const pipelineManagement = usePipelineManagement();
   const agentManagement = useAgentManagement();
@@ -150,3 +150,5 @@ export const PipelineProvider: React.FC<PipelineProviderProps> = ({ children }) 
     </PipelineContext.Provider>
   );
 };
+
+export { PipelineProvider, PipelineContext };
