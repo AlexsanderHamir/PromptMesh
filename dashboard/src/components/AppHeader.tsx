@@ -7,7 +7,7 @@ export const AppHeader: React.FC = () => {
     currentView,
     currentPipeline,
     hasUnsavedChanges,
-    createNewPipeline,
+    closePipeline,
   } = usePipelineContext();
 
   const getHeaderContent = () => {
@@ -31,15 +31,25 @@ export const AppHeader: React.FC = () => {
         };
       
       case DashViews.WELCOME:
+        return {
+          title: '',
+          subtitle: '',
+        };
+      
       default:
         return {
-          title: 'Welcome to PromptMesh',
-          subtitle: 'Create and manage your AI agent pipelines',
+          title: '',
+          subtitle: '',
         };
     }
   };
 
   const headerContent = getHeaderContent();
+
+  // Don't render anything when in WELCOME view or when there's no content
+  if (!headerContent.title || currentView === DashViews.WELCOME) {
+    return null;
+  }
 
   return (
     <div className="bg-slate-900/30 backdrop-blur border-b border-slate-700/50 px-8 py-6">
@@ -55,14 +65,13 @@ export const AppHeader: React.FC = () => {
           )}
         </div>
         
-        {currentView === DashViews.WELCOME && (
-          <button
-            onClick={createNewPipeline}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
-          >
-            Create New Pipeline
-          </button>
-        )}
+        <button
+          onClick={closePipeline}
+          className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-lg transition-colors"
+          title="Close pipeline"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
