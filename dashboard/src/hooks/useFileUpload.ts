@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { FILE_SIZES } from "../constants";
 
 interface FileMetadata {
   name: string;
@@ -210,7 +211,7 @@ export const useFileUpload = () => {
     setProcessingProgress((prev) => ({ ...prev, [fileId]: 50 }));
 
     const fileName = file.name;
-    const fileSize = (file.size / 1024).toFixed(2);
+          const fileSize = (file.size / FILE_SIZES.KB).toFixed(2);
 
     setProcessingProgress((prev) => ({ ...prev, [fileId]: 80 }));
 
@@ -233,7 +234,7 @@ What would you like me to help you with regarding this PDF?`;
     setProcessingProgress((prev) => ({ ...prev, [fileId]: 50 }));
 
     const fileName = file.name;
-    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+          const fileSize = (file.size / FILE_SIZES.MB).toFixed(2);
 
     setProcessingProgress((prev) => ({ ...prev, [fileId]: 80 }));
 
@@ -322,7 +323,7 @@ Please describe what you'd like to do with this video file.`;
 
       formatted += `\n--- UPLOADED FILE ${index + 1}: ${metadata.name} ---\n`;
       formatted += `File Type: ${metadata.description}\n`;
-      formatted += `Size: ${(metadata.size / 1024).toFixed(2)} KB\n\n`;
+      formatted += `Size: ${(metadata.size / FILE_SIZES.KB).toFixed(2)} KB\n\n`;
 
       if (metadata.type === "image") {
         formatted += `Content: [IMAGE - Base64 encoded for AI vision models]\n`;

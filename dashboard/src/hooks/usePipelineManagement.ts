@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useIndexedDB } from './useIndexedDB';
 import { generateId, validatePipelineForm } from '../utils';
 import { Pipeline, PipelineForm, Agent, PipelineStatus, STORAGE_KEYS, DEFAULT_VALUES, DashViews, LogEntry } from '../types';
+import { TIMEOUTS } from '../constants';
 
 export const usePipelineManagement = () => {
   const [pipelines, setPipelines, , isLoadingPipelines, pipelinesError] =
@@ -101,7 +102,7 @@ export const usePipelineManagement = () => {
     setErrors({});
     
     // Initialize agent order for existing agents
-    setTimeout(() => initializeAgentOrder(), 0);
+    setTimeout(() => initializeAgentOrder(), TIMEOUTS.AGENT_ORDER_INIT);
     
     // Restore execution state if callback is provided
     if (onExecutionStateRestore) {
@@ -277,46 +278,33 @@ export const usePipelineManagement = () => {
     setAgents(prev => {
       const filtered = prev.filter(agent => agent.id !== agentId);
       // Reorder remaining agents
-      filtered.forEach((agent, index) => {
-        agent.order = index;
-      });
-      return filtered;
+      return filtered.map((agent, index) => ({ ...agent, order: index }));
     });
     setIsSaved(false);
   }, []);
 
   // Agent reordering functionality
-  const moveAgentUp = useCallback((agentId: string) => {
+  const moveAgent = useCallback((agentId: string, direction: 'up' | 'down') => {
     setAgents(prev => {
       const index = prev.findIndex(agent => agent.id === agentId);
-      if (index > 0) {
-        const newAgents = [...prev];
-        [newAgents[index], newAgents[index - 1]] = [newAgents[index - 1], newAgents[index]];
-        // Update order fields to match new positions
-        newAgents[index].order = index;
-        newAgents[index - 1].order = index - 1;
-        return newAgents;
-      }
-      return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      
+      const newAgents = [...prev];
+      [newAgents[index], newAgents[targetIndex]] = [newAgents[targetIndex], newAgents[index]];
+      
+      // Update order fields to match new positions
+      newAgents[index].order = index;
+      newAgents[targetIndex].order = targetIndex;
+      
+      return newAgents;
     });
     setIsSaved(false);
   }, []);
 
-  const moveAgentDown = useCallback((agentId: string) => {
-    setAgents(prev => {
-      const index = prev.findIndex(agent => agent.id === agentId);
-      if (index < prev.length - 1) {
-        const newAgents = [...prev];
-        [newAgents[index], newAgents[index + 1]] = [newAgents[index + 1], newAgents[index]];
-        // Update order fields to match new positions
-        newAgents[index].order = index;
-        newAgents[index + 1].order = index + 1;
-        return newAgents;
-      }
-      return prev;
-    });
-    setIsSaved(false);
-  }, []);
+  const moveAgentUp = useCallback((agentId: string) => moveAgent(agentId, 'up'), [moveAgent]);
+  const moveAgentDown = useCallback((agentId: string) => moveAgent(agentId, 'down'), [moveAgent]);
 
   const reorderAgents = useCallback((fromIndex: number, toIndex: number) => {
     setAgents(prev => {

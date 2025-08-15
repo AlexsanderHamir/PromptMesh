@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, Zap } from "lucide-react";
 import { Button } from "./ui/Button";
+import { UI } from '../constants';
 
 interface WelcomeScreenProps {
   onCreateNewPipeline?: () => void;
@@ -13,9 +14,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   hasExistingPipelines = false,
   isLoading = false,
 }) => (
-  <div className="flex-1 flex items-center justify-center p-8">
+  <div className={`flex-1 flex items-center justify-center p-${UI.SPACING.EXTRA_LARGE}`}>
     <div className="text-center max-w-md">
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+              <div className={`bg-gradient-to-r from-blue-500 to-indigo-500 p-${UI.SPACING.MEDIUM} rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6`}>
         <Zap className="w-10 h-10 text-white" />
       </div>
 

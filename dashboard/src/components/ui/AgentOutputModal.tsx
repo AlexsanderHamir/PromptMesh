@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Bot, Copy, Check, ArrowDown, ArrowUp } from "lucide-react";
+import { TIMEOUTS } from "../../constants";
 
 interface AgentOutputModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export const AgentOutputModal: React.FC<AgentOutputModalProps> = ({
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), TIMEOUTS.COPY_RESET);
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }

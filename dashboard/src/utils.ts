@@ -9,16 +9,18 @@ export const formatDate = (date: string | Date): string =>
     day: "numeric",
   }).format(new Date(date));
 
+// Generic validation helper
+const validateRequiredField = (value: string | undefined, fieldName: string): string | null =>
+  !value?.trim() ? `${fieldName} is required` : null;
+
 export const validatePipelineForm = (form: PipelineForm, agents: Agent[]): ValidationErrors => {
   const errors: ValidationErrors = {};
   
-  if (!form.name?.trim()) {
-    errors.name = "Pipeline name is required";
-  }
+  const nameError = validateRequiredField(form.name, "Pipeline name");
+  if (nameError) errors.name = nameError;
   
-  if (!form.firstPrompt?.trim()) {
-    errors.firstPrompt = "Initial prompt is required";
-  }
+  const promptError = validateRequiredField(form.firstPrompt, "Initial prompt");
+  if (promptError) errors.prompt = promptError;
   
   if (agents.length === 0) {
     errors.agents = "At least one agent is required";
@@ -30,20 +32,19 @@ export const validatePipelineForm = (form: PipelineForm, agents: Agent[]): Valid
 export const validateAgentForm = (form: AgentForm): ValidationErrors => {
   const errors: ValidationErrors = {};
   
-  if (!form.name?.trim()) {
-    errors.name = "Agent name is required";
-  }
+  const requiredFields: Array<{ field: keyof AgentForm; name: string }> = [
+    { field: 'name', name: 'Agent name' },
+    { field: 'role', name: 'Role' },
+    { field: 'systemMsg', name: 'System message' }
+  ];
   
-  if (!form.role?.trim()) {
-    errors.role = "Role is required";
-  }
+  requiredFields.forEach(({ field, name }) => {
+    const error = validateRequiredField(form[field] as string, name);
+    if (error) errors[field] = error;
+  });
   
   if (!form.provider) {
     errors.provider = "Provider is required";
-  }
-  
-  if (!form.systemMsg?.trim()) {
-    errors.systemMsg = "System message is required";
   }
   
   return errors;
@@ -57,9 +58,7 @@ export const exportPipelines = (pipelines: Pipeline[]): void => {
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `promptmesh-pipelines-${
-    new Date().toISOString().split("T")[0]
-  }.json`;
+  link.download = `promptmesh-pipelines-${new Date().toISOString().split("T")[0]}.json`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -74,18 +73,19 @@ export const importPipelines = (file: File): Promise<Pipeline[]> => {
       try {
         const pipelines = JSON.parse(e.target?.result as string);
         
-        if (Array.isArray(pipelines)) {
-          // Ensure each pipeline has required fields and update timestamps
-          const validPipelines = pipelines.map((pipeline) => ({
-            ...pipeline,
-            id: pipeline.id || generateId(),
-            createdAt: pipeline.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }));
-          resolve(validPipelines);
-        } else {
+        if (!Array.isArray(pipelines)) {
           reject(new Error("Invalid pipeline format"));
+          return;
         }
+        
+        // Ensure each pipeline has required fields and update timestamps
+        const validPipelines = pipelines.map((pipeline) => ({
+          ...pipeline,
+          id: pipeline.id || generateId(),
+          createdAt: pipeline.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+        resolve(validPipelines);
       } catch (error) {
         reject(new Error("Failed to parse pipeline file"));
       }
@@ -96,35 +96,33 @@ export const importPipelines = (file: File): Promise<Pipeline[]> => {
   });
 };
 
-export const duplicatePipeline = (pipeline: Pipeline): Pipeline => {
-  return {
-    ...pipeline,
-    id: generateId(),
-    name: `${pipeline.name} (Copy)`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-};
+export const duplicatePipeline = (pipeline: Pipeline): Pipeline => ({
+  ...pipeline,
+  id: generateId(),
+  name: `${pipeline.name} (Copy)`,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
 
 // Validate agent order consistency
 export const validateAgentOrder = (agents: Agent[]): boolean => {
   if (agents.length === 0) return true;
   
   // Check if order field matches array position
-  for (let i = 0; i < agents.length; i++) {
-    if (agents[i].order !== i) {
-      console.warn(`Agent order mismatch: agent ${agents[i].name} has order ${agents[i].order} but is at position ${i}`);
-      return false;
+  const hasOrderMismatch = agents.some((agent, index) => {
+    if (agent.order !== index) {
+      console.warn(`Agent order mismatch: agent ${agent.name} has order ${agent.order} but is at position ${index}`);
+      return true;
     }
-  }
+    return false;
+  });
   
-  return true;
+  return !hasOrderMismatch;
 };
 
 // Normalize agent order to ensure consistency
-export const normalizeAgentOrder = (agents: Agent[]): Agent[] => {
-  return agents.map((agent, index) => ({
+export const normalizeAgentOrder = (agents: Agent[]): Agent[] =>
+  agents.map((agent, index) => ({
     ...agent,
     order: index,
   }));
-};

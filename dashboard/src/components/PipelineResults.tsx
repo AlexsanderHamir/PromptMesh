@@ -14,6 +14,7 @@ import { Button } from "./ui/Button";
 import { LogEntry } from "./ui/LogEntry";
 import { formatDate } from "../utils";
 import { LogEntry as LogEntryType } from "../types";
+import { TIMEOUTS, UI } from "../constants";
 
 interface PipelineResultsProps {
   result: string;
@@ -44,7 +45,7 @@ export const PipelineResults: React.FC<PipelineResultsProps> = ({
       try {
         await navigator.clipboard.writeText(result);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+        setTimeout(() => setCopied(false), TIMEOUTS.COPY_RESET); // Reset after 2 seconds
       } catch (err) {
         console.error("Failed to copy: ", err);
         // Fallback for older browsers
@@ -55,7 +56,7 @@ export const PipelineResults: React.FC<PipelineResultsProps> = ({
         document.execCommand("copy");
         document.body.removeChild(textArea);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => setCopied(false), TIMEOUTS.COPY_RESET);
       }
     }
   };
@@ -143,7 +144,7 @@ export const PipelineResults: React.FC<PipelineResultsProps> = ({
 
       {/* Results Card */}
       <Card title="Pipeline Results" subtitle={subtitle} icon={icon}>
-        <div className="bg-slate-900/50 rounded-lg p-6 min-h-64">
+        <div className={`bg-slate-900/50 rounded-lg p-6 min-h-${UI.HEIGHTS.MIN_MEDIUM}`}>
           {showContent ? (
             <div className="space-y-6">
               {/* Show indicator for historical data */}
@@ -220,7 +221,7 @@ export const PipelineResults: React.FC<PipelineResultsProps> = ({
                       </span>
                     )}
                   </h4>
-                  <div className="bg-slate-800/30 rounded-lg p-4 max-h-80 overflow-y-auto">
+                  <div className={`bg-slate-800/30 rounded-lg p-4 max-h-${UI.HEIGHTS.MAX_MEDIUM} overflow-y-auto`}>
                     <div className="space-y-2">
                       {logs.map((log, index) => (
                         <LogEntry key={index} log={log} index={index} />

@@ -10,6 +10,7 @@ import {
   Video,
 } from "lucide-react";
 import { Button } from "./Button";
+import { FILE_SIZES, UI } from "../../constants";
 
 interface FileMetadata {
   name: string;
@@ -121,7 +122,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
-    const k = 1024;
+    const k = FILE_SIZES.KB;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
@@ -192,8 +193,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           </div>
 
           {uploadedFiles.map((uploadedFile) => {
-            const progress = processingProgress[uploadedFile.id] || 100;
-            const isProcessingThis = progress < 100;
+            const progress = processingProgress[uploadedFile.id] || UI.PROGRESS.COMPLETE;
+            const isProcessingThis = progress < UI.PROGRESS.COMPLETE;
             const hasError = uploadedFile.metadata?.error;
 
             return (
@@ -273,9 +274,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                           Preview content ({uploadedFile.content.length}{" "}
                           characters)
                         </summary>
-                        <div className="mt-2 p-2 bg-slate-900/50 rounded text-slate-300 max-h-32 overflow-y-auto font-mono text-[10px] leading-relaxed">
-                          {uploadedFile.content.slice(0, 500)}
-                          {uploadedFile.content.length > 500 && "..."}
+                        <div className={`mt-2 p-2 bg-slate-900/50 rounded text-slate-300 max-h-${UI.HEIGHTS.MAX_SMALL} overflow-y-auto font-mono ${UI.TEXT_SIZES.EXTRA_SMALL} leading-relaxed`}>
+                                                      {uploadedFile.content.slice(0, UI.CONTENT_LIMITS.PREVIEW_CHARS)}
+                            {uploadedFile.content.length > UI.CONTENT_LIMITS.PREVIEW_CHARS && "..."}
                         </div>
                       </details>
                     </div>

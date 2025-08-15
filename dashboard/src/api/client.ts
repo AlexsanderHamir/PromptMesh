@@ -1,4 +1,5 @@
 import { PipelineForm, Agent } from '../types';
+import { API_CONFIG, FILE_SIZES } from '../constants';
 
 interface FileMetadata {
   name: string;
@@ -44,8 +45,8 @@ declare global {
 }
 
 const API_BASE_URL = import.meta.env.DEV
-  ? "/api"
-  : import.meta.env.VITE_API_URL || "http://localhost:8080";
+  ? API_CONFIG.DEV_API_PATH
+  : import.meta.env.VITE_API_URL || `http://${API_CONFIG.DEFAULT_HOST}:${API_CONFIG.DEFAULT_PORT}`;
 
 class ApiClient {
   async request(endpoint: string, options: RequestInit = {}): Promise<any> {
@@ -92,7 +93,7 @@ class ApiClient {
 
         fileContent += `\n--- FILE ${index + 1}: ${metadata.name} ---\n`;
         fileContent += `File Type: ${metadata.type}\n`;
-        fileContent += `Size: ${(metadata.size / 1024).toFixed(2)} KB\n`;
+        fileContent += `Size: ${(metadata.size / FILE_SIZES.KB).toFixed(2)} KB\n`;
 
         if (metadata.type === "image") {
           // For images, we need to handle them specially
@@ -157,7 +158,7 @@ class ApiClient {
 
         fileContent += `\n--- FILE ${index + 1}: ${metadata.name} ---\n`;
         fileContent += `File Type: ${metadata.type}\n`;
-        fileContent += `Size: ${(metadata.size / 1024).toFixed(2)} KB\n`;
+        fileContent += `Size: ${(metadata.size / FILE_SIZES.KB).toFixed(2)} KB\n`;
 
         if (metadata.type === "image") {
           // For images, we need to handle them specially

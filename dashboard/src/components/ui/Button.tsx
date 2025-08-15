@@ -36,9 +36,13 @@ export const Button: React.FC<ButtonProps> = ({
     lg: "px-6 py-3 text-base gap-2",
   };
 
+  const buttonClasses = [baseClasses, variants[variant], sizes[size], className]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <button
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={buttonClasses}
       disabled={disabled}
       {...props}
     >

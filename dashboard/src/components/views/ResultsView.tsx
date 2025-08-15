@@ -1,6 +1,7 @@
 import React from 'react';
 import { PipelineResults } from '../PipelineResults';
 import { usePipelineContext } from '../../contexts/PipelineContext';
+import { UI } from '../../constants';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { DashViews } from '../../types';
 
@@ -99,7 +100,7 @@ export const ResultsView: React.FC = () => {
             <h3 className="text-lg font-medium text-slate-200 mb-4">
               Execution Logs
             </h3>
-            <div className="bg-slate-900/50 rounded-lg p-4 max-h-96 overflow-y-auto">
+            <div className={`bg-slate-900/50 rounded-lg p-4 max-h-${UI.HEIGHTS.MAX_LARGE} overflow-y-auto`}>
               {hasPreviousLogs.map((log, index) => (
                 <div
                   key={index}

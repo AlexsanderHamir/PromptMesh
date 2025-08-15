@@ -1,5 +1,6 @@
 import React from 'react';
 import { PipelineStatus } from "../../types";
+import { UI } from "../../constants";
 
 interface StatusBadgeProps {
   status: PipelineStatus;
@@ -25,13 +26,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     },
   };
 
-  const config = statusConfig[status] || statusConfig[PipelineStatus.IDLE];
+  const config = statusConfig[status] ?? statusConfig[PipelineStatus.IDLE];
 
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
     >
-      <span className="text-[10px]">{config.icon}</span>
+      <span className={UI.TEXT_SIZES.EXTRA_SMALL}>{config.icon}</span>
       {status}
     </span>
   );
