@@ -19,6 +19,15 @@ export const AgentOutputModal: React.FC<AgentOutputModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"input" | "output">("output");
 
+  // Debug logging when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log(`[DEBUG] AgentOutputModal opened for agent: ${agentName}`);
+      console.log(`[DEBUG] Agent input:`, agentInput);
+      console.log(`[DEBUG] Agent output:`, agentOutput);
+    }
+  }, [isOpen, agentName, agentInput, agentOutput]);
+
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);

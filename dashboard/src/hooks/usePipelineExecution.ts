@@ -191,6 +191,7 @@ export const usePipelineExecution = () => {
                     console.log(`[DEBUG] Constructed fallback input:`, agentInput);
                   }
                   
+                  console.log(`[DEBUG] Storing agent_processing log with input for ${data.agent_name}:`, agentInput);
                   addLog(LOG_TYPES.INFO, `⚙️ Agent '${data.agent_name}' processing input...`, {
                     agent: data.agent_name,
                     type: "agent_processing",
@@ -220,7 +221,9 @@ export const usePipelineExecution = () => {
                   // If backend doesn't provide agent input, try to find it from our logs
                   if (!agentInput) {
                     console.log(`[DEBUG] No agent_input from backend in completed event, looking in logs`);
-                    const processingLog = logs.find(
+                    // Use a more reliable way to find the processing log by looking at the current logs state
+                    const currentLogs = logs; // Capture current logs state
+                    const processingLog = currentLogs.find(
                       (log) =>
                         log.metadata?.agent === data.agent_name &&
                         log.metadata?.type === "agent_processing"
@@ -230,9 +233,48 @@ export const usePipelineExecution = () => {
                       console.log(`[DEBUG] Found agent_input in processing log:`, agentInput);
                     } else {
                       console.log(`[DEBUG] No agent_input found in processing log either`);
+                      // As a last resort, try to construct the input from context
+                      if (data.agent_name === agents[0]?.name) {
+                        const firstAgent = agents[0];
+                        agentInput = `${firstAgent.systemMsg}\n\n${pipelineForm.firstPrompt}`;
+                        // Add uploaded files content if any
+                        if (uploadedFiles.length > 0) {
+                          let fileContent = "\n\n--- ATTACHED FILES ---\n";
+                          uploadedFiles.forEach((file, index) => {
+                            fileContent += `\n--- FILE ${index + 1}: ${file.metadata.name} ---\n`;
+                            fileContent += `Content:\n${file.content}\n`;
+                            fileContent += `--- END FILE ${index + 1} ---\n`;
+                          });
+                          fileContent += "\n--- END ATTACHED FILES ---\n";
+                          agentInput += fileContent;
+                        }
+                      } else {
+                        // For subsequent agents, find the previous agent's output
+                        const currentAgentIndex = agents.findIndex(agent => agent.name === data.agent_name);
+                        if (currentAgentIndex > 0) {
+                          const currentAgent = agents[currentAgentIndex];
+                          const previousAgentName = agents[currentAgentIndex - 1].name;
+                          const previousAgentLog = currentLogs.find(
+                            (log) =>
+                              log.metadata?.agent === previousAgentName &&
+                              log.metadata?.type === "agent_completed" &&
+                              log.metadata?.agentOutput
+                          );
+                          if (previousAgentLog?.metadata?.agentOutput) {
+                            const previousOutput = previousAgentLog.metadata.agentOutput as string;
+                            agentInput = `${currentAgent.systemMsg}\n\n${previousOutput}`;
+                          } else {
+                            agentInput = `${currentAgent.systemMsg}\n\nOutput from previous agent '${previousAgentName}' not available`;
+                          }
+                        } else {
+                          agentInput = "No input available";
+                        }
+                      }
+                      console.log(`[DEBUG] Constructed fallback input for completed event:`, agentInput);
                     }
                   }
                   
+                  console.log(`[DEBUG] Storing agent_completed log with input for ${data.agent_name}:`, agentInput);
                   addLog(LOG_TYPES.SUCCESS, data.message, {
                     agent: data.agent_name,
                     type: "agent_completed",

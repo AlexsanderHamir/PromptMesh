@@ -174,8 +174,12 @@ export const ExecutionMonitor: React.FC<ExecutionMonitorProps> = ({
                       {status.status === "completed" && hasOutput && (
                         <button
                           onClick={() => {
+                            console.log(`[DEBUG] Details button clicked for agent: ${agentName}`);
+                            console.log(`[DEBUG] Current logs:`, logs);
+                            
                             // First try to get input from the completed log (more reliable)
                             let agentInput = agentLog?.metadata?.agentInput;
+                            console.log(`[DEBUG] Input from completed log:`, agentInput);
                             
                             // If not found in completed log, fall back to processing log
                             if (!agentInput) {
@@ -184,9 +188,12 @@ export const ExecutionMonitor: React.FC<ExecutionMonitorProps> = ({
                                   log.metadata?.agent === agentName &&
                                   log.metadata?.type === "agent_processing"
                               );
+                              console.log(`[DEBUG] Processing log found:`, agentInputLog);
                               agentInput = agentInputLog?.metadata?.agentInput;
+                              console.log(`[DEBUG] Input from processing log:`, agentInput);
                             }
                             
+                            console.log(`[DEBUG] Final agent input being passed:`, agentInput);
                             handleAgentOutputClick(
                               agentName,
                               hasOutput,

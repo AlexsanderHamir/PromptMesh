@@ -128,6 +128,7 @@ func (ag *AgentManager) executePipelineWithStreaming(w http.ResponseWriter, curr
 		"output_length": len(result),
 		"is_last":       currentAgent.IsLast,
 		"agent_output":  result, // Include the actual output for observability
+		"agent_input":   input,  // Include the input that was used for this agent
 	})
 
 	// If this is the last agent, return the result
