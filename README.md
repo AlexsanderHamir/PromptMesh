@@ -2,7 +2,9 @@
 
 A modern AI agent pipeline platform with a **stateless server** and **client-side configuration**.
 
+ ▶️ [Watch Demo Video](https://cdn.jsdelivr.net/gh/AlexsanderHamir/assets@main/promptmash.mp4)
 ![PromptMesh Dashboard](home_page.png)
+
 
 ## Architecture
 

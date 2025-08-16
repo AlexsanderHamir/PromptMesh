@@ -5,6 +5,7 @@ import { PipelineActions } from '../PipelineActions';
 import { AddAgentModal } from '../AddAgentModal';
 import { usePipelineContext } from '../../contexts/PipelineContext';
 import { Agent, DashViews } from '../../types';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface UploadedFile {
   id: string;
@@ -62,6 +63,10 @@ export const BuilderView: React.FC = () => {
     order: 0, // Initialize order to 0
   });
   const [agentFormErrors, setAgentFormErrors] = useState<Record<string, string | null>>({});
+
+  // State for agent deletion confirmation
+  const [showDeleteAgentDialog, setShowDeleteAgentDialog] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<string | null>(null);
 
   const hasLastExecution = Boolean(
     currentPipeline?.lastExecutionResult || 
@@ -164,9 +169,23 @@ export const BuilderView: React.FC = () => {
 
   // Handle removing an agent
   const handleRemoveAgent = (agentId: string) => {
-    if (window.confirm('Are you sure you want to remove this agent? This action cannot be undone.')) {
-      removeAgent(agentId);
+    setAgentToDelete(agentId);
+    setShowDeleteAgentDialog(true);
+  };
+
+  // Confirm agent deletion
+  const confirmDeleteAgent = () => {
+    if (agentToDelete) {
+      removeAgent(agentToDelete);
+      setShowDeleteAgentDialog(false);
+      setAgentToDelete(null);
     }
+  };
+
+  // Cancel agent deletion
+  const cancelDeleteAgent = () => {
+    setShowDeleteAgentDialog(false);
+    setAgentToDelete(null);
   };
 
   return (
@@ -219,6 +238,17 @@ export const BuilderView: React.FC = () => {
         onFormChange={handleAgentFormChange}
         onSubmit={handleAgentSubmit}
         onClose={handleCloseAddAgent}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteAgentDialog}
+        title="Delete Agent"
+        message="Are you sure you want to remove this agent? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDeleteAgent}
+        onCancel={cancelDeleteAgent}
+        variant="danger"
       />
     </div>
   );
