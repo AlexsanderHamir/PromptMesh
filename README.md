@@ -2,7 +2,7 @@
 
 A modern AI agent pipeline platform with a **stateless server** and **client-side configuration**.
 
-![PromptMesh Dashboard](home_page.jpg)
+![PromptMesh Dashboard](home_page.png)
 
 ## Architecture
 
