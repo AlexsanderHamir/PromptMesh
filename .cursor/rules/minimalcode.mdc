@@ -1,9 +1,7 @@
 ---
 description: "Always aim for minimal, focused code. Build incrementally with working states at each step. Handle edge cases progressively, not all at once. Choose a single area, problem, or entry point, and focus on it before moving to the next. Excessive code upfront makes review and iteration harder."
-alwaysApply: true
-priority: high
+alwaysApply: false
 ---
-
 # INCREMENTAL DEVELOPMENT RULES
 
 ## Core Principles
