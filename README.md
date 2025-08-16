@@ -2,30 +2,29 @@
 
 A modern AI agent pipeline platform with a **stateless server** and **client-side configuration**.
 
- ▶️ [Watch Demo Video](https://cdn.jsdelivr.net/gh/AlexsanderHamir/assets@main/promptmash.mp4)
+▶️ [Watch Demo Video](https://cdn.jsdelivr.net/gh/AlexsanderHamir/assets@main/promptmash.mp4)
 ![PromptMesh Dashboard](home_page.png)
-
 
 ## Architecture
 
-* **Frontend (React + IndexedDB)** – Stores pipeline configs, agent settings, and user data.
-* **Backend (Go)** – Handles temporary pipeline execution sessions only.
-* **Stateless Server** – No persistent storage; all data stays client-side.
+- **Frontend (React + IndexedDB)** – Stores pipeline configs, agent settings, and user data.
+- **Backend (Go)** – Handles temporary pipeline execution sessions only.
+- **Stateless Server** – No persistent storage; all data stays client-side.
 
 ## Features
 
-* 🤖 Chain multiple AI agents
-* 🔧 Visual pipeline builder
-* 🔄 Real-time monitoring for debugging
-* 🎯 Multi-provider support: OpenAI, Anthropic, Google AI, Cohere, Hugging Face
+- 🤖 Chain multiple AI agents
+- 🔧 Visual pipeline builder
+- 🔄 Real-time monitoring for debugging
+- 🎯 Multi-provider support: OpenAI, Anthropic, Google AI, Cohere, Hugging Face
 
 ## Quick Start
 
 ### Prerequisites
 
-* Go 1.24.3+ – Required for backend development
-* Node.js 24.1.0+ – Required for frontend (React) development
-* API keys – Needed to run pipelines with AI providers
+- Go 1.24.3+ – Required for backend development
+- Node.js 24.1.0+ – Required for frontend (React) development
+- API keys – Needed to run pipelines with AI providers
 
 ### Setup
 
@@ -54,8 +53,8 @@ Open `http://localhost:3000` in your browser.
 
 ## API
 
-* `POST /pipelines/execute` – Run a pipeline and get the result
-* `POST /pipelines/execute/stream` – Run with live SSE updates
+- `POST /pipelines/execute` – Run a pipeline and get the result
+- `POST /pipelines/execute/stream` – Run with live SSE updates
 
 See [API docs](dashboard/src/api/api.md) for details.
 
@@ -73,9 +72,9 @@ PromptMesh/
 
 ## Development
 
-* **Frontend:** `cd dashboard && npm install && npm run dev`
-* **Backend:** `go mod tidy && go run main.go`
-* **Tests:** `go test ./...` (backend), `npm test` (frontend)
+- **Frontend:** `cd dashboard && npm install && npm run dev`
+- **Backend:** `go mod tidy && go run main.go`
+- **Tests:** `go test ./...` (backend), `npm test` (frontend)
 
 ## Contributing
 
